@@ -25,7 +25,9 @@ func fault(err error, message string, arg ...string) {
 func main() {
 	opts := util.GetOptions()
 
-	args, err := pawnd.Cli(opts, os.Args)
+	opts.Set("configuration-file", "pawnd.conf")
+
+	_, err := pawnd.Cli(opts, os.Args)
 	if err != nil {
 		fault(err, "command line parsing failed")
 	}
