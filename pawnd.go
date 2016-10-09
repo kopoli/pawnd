@@ -31,5 +31,8 @@ func main() {
 	if err != nil {
 		fault(err, "command line parsing failed")
 	}
-	os.Exit(1)
+
+	pawnd.TriggerOnFileChanges([]string{"**/*.go"}, nil)
+
+	os.Exit(0)
 }
