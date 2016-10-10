@@ -26,6 +26,7 @@ func uniqStr(in []string) (out []string) {
 	out = make([]string, len(set))
 	for item := range set {
 		out = append(out, item)
+		fmt.Println("item:[", item, "]")
 	}
 	return
 }
@@ -58,6 +59,8 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 		return
 	}
 
+	fmt.Println("Files", files)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -69,6 +72,13 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 			return
 		}
 		defer watch.Close()
+
+		for _, name := range files {
+			err = watch.Add(name)
+			if err != nil {
+				fmt.Println("Could not watch", name)
+			}
+		}
 
 		for {
 			select {
