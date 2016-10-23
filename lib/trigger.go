@@ -12,11 +12,21 @@ import (
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
-type Trigger struct{}
+type Trigger struct{
+	err error
+}
 
 type TriggerHandler struct {
 	done chan bool
 }
+
+// type Triggerable interface {
+// 	SetInput(<-chan Trigger) error
+// }
+
+// type Triggerer interface {
+// 	SetOutput(chan<- Trigger) error
+// }
 
 // Remove duplicate strings from the list
 func uniqStr(in []string) (out []string) {

@@ -17,9 +17,11 @@ func printErr(err error, message string, arg ...string) {
 	fmt.Fprintf(os.Stderr, "Error: %s%s.%s\n", message, strings.Join(arg, " "), msg)
 }
 
-func fault(err error, message string, arg ...string) {
-	printErr(err, message, arg...)
-	os.Exit(1)
+func checkFault(err error, message string, arg ...string) {
+	if err != nil {
+		printErr(err, message, arg...)
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -28,34 +30,48 @@ func main() {
 	opts.Set("configuration-file", "pawnd.conf")
 
 	_, err := pawnd.Cli(opts, os.Args)
-	if err != nil {
-		fault(err, "command line parsing failed")
+	checkFault(err, "command line parsing failed")
+
+	// ch := make(chan pawnd.Trigger)
+
+	// p := pawnd.Process{
+	// 	Args: []string{"ls"},
+	// 	Stdout: os.Stdout,
+	// 	Stderr: os.Stderr,
+	// 	IsDaemon: false,
+	// }
+
+	// pm := pawnd.ProcessManager{}
+
+	// err = pm.Add(p, ch)
+	// if err != nil {
+	// 	fault(err, "Adding process failed")
+	// }
+
+	// _, err = pawnd.TriggerOnFileChanges([]string{"**/*.go"}, ch)
+	// if err != nil {
+	// 	fault(err, "Trigger test failed")
+	// }
+
+	fc := &pawnd.FileChangeLink{
+		Patterns: []string{"**/*.go"},
 	}
 
-	ch := make(chan pawnd.Trigger)
-
-	p := pawnd.Process{
+	c := &pawnd.CommandLink{
 		Args: []string{"ls"},
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		IsDaemon: false,
 	}
 
-	pm := pawnd.ProcessManager{}
-
-	err = pm.Add(p, ch)
-	if err != nil {
-		fault(err, "Adding process failed")
-	}
-
-	_, err = pawnd.TriggerOnFileChanges([]string{"**/*.go"}, ch)
-	if err != nil {
-		fault(err, "Trigger test failed")
-	}
+	err = pawnd.Join(fc, c)
+	checkFault(err, "Starting chain failed")
 
 	var input string
 	fmt.Scanln(&input)
-	close(ch)
+	// close(ch)
+	fc.Close()
+	c.Close()
 
 	os.Exit(0)
 }
