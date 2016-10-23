@@ -32,10 +32,30 @@ func main() {
 		fault(err, "command line parsing failed")
 	}
 
-	_, err = pawnd.TriggerOnFileChanges([]string{"**/*.go"}, nil)
+	ch := make(chan pawnd.Trigger)
+
+	p := pawnd.Process{
+		Args: []string{"ls"},
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		IsDaemon: false,
+	}
+
+	pm := pawnd.ProcessManager{}
+
+	err = pm.Add(p, ch)
+	if err != nil {
+		fault(err, "Adding process failed")
+	}
+
+	_, err = pawnd.TriggerOnFileChanges([]string{"**/*.go"}, ch)
 	if err != nil {
 		fault(err, "Trigger test failed")
 	}
+
+	var input string
+	fmt.Scanln(&input)
+	close(ch)
 
 	os.Exit(0)
 }

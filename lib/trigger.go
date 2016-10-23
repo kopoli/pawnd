@@ -36,6 +36,7 @@ func uniqStr(in []string) (out []string) {
 // Get the list of files represented by the given list of glob patterns
 func getFileList(patterns []string) (ret []string) {
 	for _, pattern := range patterns {
+		// Recursive globbing support
 		m, err := zglob.Glob(pattern)
 		if err != nil {
 			continue
@@ -111,6 +112,7 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 			select {
 			case <-threshold.C:
 				fmt.Println("Would send an event")
+				t <- Trigger{}
 			case event := <-watch.Events:
 				fmt.Println("Event received:", event)
 				if matchPattern(event.Name) {
@@ -132,10 +134,4 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 
 func (h *TriggerHandler) Close() (err error) {
 	return
-}
-
-////
-
-func Glob(pattern string) (matches []string, err error) {
-	return zglob.Glob(pattern)
 }
