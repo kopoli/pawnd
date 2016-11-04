@@ -427,7 +427,220 @@ func Join(links ...Link) (err error) {
 	return
 }
 
+/////////////////////////////////////////////////////////////
+
+// Event that is triggered
+type Event interface {
+	Run(string) error
+}
+
+// FEATURE EventFunc is to Event what http.HandlerFunc is to http.Handler
+// type EventFunc func()
+
+// Event emitter
+type Emitter interface {
+
+	// Register Event to string
+	On(Event, ...string) error
+
+	Trigger(string)
+}
+
+// A "Daemon" that Triggers events on an emitter
+type Source interface {
+	Init(string, Emitter) error
+
+	Start()
+}
+
+/////////////////////////////////////////////////////////////
+
+type emitter struct {
+	events map[string][]Event
+
+	mutex sync.Mutex
+}
+
+func (e *emitter) initialize() {
+	if e.events == nil {
+		e.events = make(map[string][]Event)
+	}
+}
+
+func (e *emitter) On(event Event, IDs ...string) (err error) {
+	e.mutex.Lock()
+	e.initialize()
+	for _, ID := range IDs {
+		e.events[ID] = append(e.events[ID], event)
+	}
+	e.mutex.Unlock()
+	return
+}
+
+func (e *emitter) Trigger(ID string) {
+	e.mutex.Lock()
+	e.initialize()
+
+	fmt.Println("Event list", e.events[ID])
+	for _, ev := range e.events[ID] {
+		go func(ID string, ev Event) {
+			fmt.Println("ID", ID, "Event", ev)
+			_ = ev.Run(ID)
+		}(ID, ev)
+	}
+	e.mutex.Unlock()
+}
+
+/////////////////////////////////////////////////////////////
+
+type CommandEvent struct {
+	Args []string
+
+	CoolDown time.Duration
+
+	Stdout io.Writer
+	Stderr io.Writer
+
+	IsDaemon bool
+
+	cmd *exec.Cmd
+	wg sync.WaitGroup
+}
+
+func (c *CommandEvent) runCmd() (err error) {
+	c.wg.Add(1)
+	c.cmd = exec.Command(c.Args[0], c.Args[1:]...)
+	c.cmd.Stdout = c.Stdout
+	c.cmd.Stderr = c.Stderr
+	err = c.cmd.Start()
+	if err != nil {
+		c.cmd = nil
+		util.E.Print(err, "Starting command failed: ", c.Args)
+		return
+	}
+	err = c.cmd.Wait()
+
+	// Determine the exit code
+	if err != nil {
+		ret := 1
+		if ee, ok := err.(*exec.ExitError); ok {
+			if stat, ok := ee.Sys().(syscall.WaitStatus); ok {
+				ret = stat.ExitStatus()
+			}
+		}
+		err = util.E.Annotate(err, "Running a command failed with:", ret)
+	}
+	// c.doReady(Trigger{err: err})
+	c.wg.Done()
+
+	return
+}
+
+func (c *CommandEvent) killCmd() (err error) {
+	if c.cmd != nil && c.cmd.Process != nil {
+		err = c.cmd.Process.Kill()
+	}
+	return
+}
+
+
+func (c *CommandEvent) Run(ID string) (err error) {
+	fmt.Println("Arguments", c.Args)
+	fmt.Println("Starting command executor")
+
+	switch ID {
+	case "terminate":
+		_ = c.killCmd()
+	default:
+		if c.IsDaemon {
+			_ = c.killCmd()
+		} else {
+			c.wg.Wait()
+		}
+		_ = c.runCmd()
+	}
+
+	return
+}
+
+/////////////////////////////////////////////////////////////
+
+type OnceSource struct {
+	id string
+	e Emitter
+}
+
+func (o *OnceSource) Init(id string, e Emitter) (err error) {
+	o.id = id
+	o.e = e
+	return
+}
+
+func (o *OnceSource) Start() {
+	o.e.Trigger(o.id)
+}
+
 
 /////////////////////////////////////////////////////////////
 
 
+
+/////////////////////////////////////////////////////////////
+
+func TestRun(opts util.Options) (err error) {
+
+	cfgs, err := LoadConfigs(opts)
+	if err != nil {
+		util.E.Annotate(err, "Loading configurations failed")
+		return
+	}
+
+	fmt.Println(cfgs)
+
+	e := &emitter{}
+
+	for _, cfg := range cfgs {
+		var source Source
+
+		if cfg.Exec == "" {
+			continue
+		}
+
+		// if cfg.Pattern != "" {
+		// 	source = &FileChangeLink{
+		// 		Patterns: strings.Split(cfg.Pattern, " "),
+		// 	}
+		// } else {
+			source = &OnceSource{}
+		// }
+
+		source.Init(cfg.Name, e)
+
+		fmt.Println("Name", cfg.Name, "Exec", strings.Split(cfg.Exec, " "))
+
+		target := &CommandEvent{
+			Args:     strings.Split(cfg.Exec, " "),
+			Stdout:   os.Stdout,
+			Stderr:   os.Stderr,
+			IsDaemon: cfg.IsDaemon,
+		}
+
+		e.On(target, cfg.Name, "terminate")
+		source.Start()
+
+		// err = Join(source, target)
+		// if err != nil {
+		// 	util.E.Annotate(err, "Joining chain", cfg.Name, "Failed")
+		// 	return
+		// }
+
+		// links = append(links, source, target)
+	}
+
+	var input string
+	fmt.Scanln(&input)
+
+	e.Trigger("terminate")
+
+	return
+}

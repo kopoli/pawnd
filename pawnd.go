@@ -67,7 +67,8 @@ func main() {
 	// err = pawnd.Join(fc, c)
 	// checkFault(err, "Starting chain failed")
 
-	err = pawnd.Run(opts)
+	// err = pawnd.Run(opts)
+	err = pawnd.TestRun(opts)
 	checkFault(err, "Running chains failed")
 
 	var input string
