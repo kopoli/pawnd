@@ -3,9 +3,11 @@ package pawnd
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -16,11 +18,11 @@ import (
 
 type Link interface {
 
-	RegisterTrigger(out Link) error
-	RegisterReady(in Link) error
+	// Registers the Link that triggers this one
+	RegisterTrigger(Link) error
 
-	// Rekisteröi Linkn ketjuun (in:lle ajetaan Ready ja outlle ajetaan Trigger)
-	// Join(in Link, out Link) error
+	// Registers the Link that this reports its readiness
+	RegisterReady(Link) error
 
 	// in on valmis
 	Trigger(Trigger)
@@ -38,72 +40,6 @@ type Link interface {
 	Name() string
 }
 
-// type Chain interface {
-
-// 	// Join(in Link, out Link) error
-
-// 	// Rajapinta Link:lle
-
-// 	// Ilmoittaa eteenpäin triggauksesta
-// 	// Trigger()
-
-// 	// Ilmoittaa taaksepäin triggauksesta
-// 	// Ready()
-// }
-
-// type QueueLink struct {
-// }
-
-// func (q *QueueLink) Trigger() {
-
-// }
-
-/////////////////////////////////////////////////////////////
-
-func Join(links ...Link) (err error) {
-	if links == nil || len(links) <= 1 {
-		err = util.E.New("Invalid arguments")
-		return
-	}
-
-	fmt.Println("links on", links)
-
-	var prev Link
-	prev = nil
-
-	for _, l := range links {
-		if prev != nil {
-			prev.RegisterTrigger(l)
-			l.RegisterReady(prev)
-		}
-		// if i + 1 < len(links) {
-		// 	err = l.Join(prev, links[i+1])
-		// 	if err != nil {
-		// 		err = util.E.Annotate(err, "Could not join links", i, "and", i+1)
-		// 		return
-		// 	}
-		// 	prev = l
-		// }
-		prev = l
-	}
-
-	for i, l := range links {
-		fmt.Println("Running open for", l.Name())
-		err = l.Open()
-		if err != nil {
-			err = util.E.Annotate(err, "Could not Open Link chain")
-			for i = i - 1; i >= 0; i-- {
-				l.Close()
-			}
-			return
-		}
-	}
-
-	fmt.Println("PÄÄSTIIN TÄNNE")
-
-	return
-}
-
 /////////////////////////////////////////////////////////////
 
 // Basic functionality for a link
@@ -112,7 +48,7 @@ type BaseLink struct {
 	out Link
 
 	trigger chan Trigger
-	ready chan Trigger
+	ready   chan Trigger
 
 	closeWg sync.WaitGroup
 	close   chan Trigger
@@ -129,7 +65,7 @@ func (b *BaseLink) RegisterTrigger(out Link) (err error) {
 	return
 }
 
-func (b *BaseLink) RegisterReady(in Link) (err error){
+func (b *BaseLink) RegisterReady(in Link) (err error) {
 	b.in = in
 	return
 }
@@ -168,7 +104,7 @@ func (b *BaseLink) createTriggerChannel() {
 }
 
 func (b *BaseLink) Trigger(t Trigger) {
-	fmt.Println("Received trigger call,",b, "channel", b.trigger)
+	fmt.Println("Received trigger call,", b, "channel", b.trigger)
 	if b.trigger != nil {
 		b.trigger <- t
 	}
@@ -319,6 +255,7 @@ type CommandLink struct {
 }
 
 func (c *CommandLink) Open() (err error) {
+	fmt.Println("Arguments", c.Args)
 	if len(c.Args) == 0 || c.Args[0] == "" {
 		err = util.E.New("Invalid arguments to run a command")
 		return
@@ -350,7 +287,7 @@ func (c *CommandLink) Open() (err error) {
 					ret = stat.ExitStatus()
 				}
 			}
-			err = util.E.Annotate(err, "Running a command failed with:",ret)
+			err = util.E.Annotate(err, "Running a command failed with:", ret)
 		}
 		c.doReady(Trigger{err: err})
 		wg.Done()
@@ -372,7 +309,8 @@ func (c *CommandLink) Open() (err error) {
 	loop:
 		for {
 			select {
-			case <- c.trigger:
+			case <-c.trigger:
+				fmt.Println("Received trigger to run a command")
 				if c.IsDaemon {
 					_ = killCmd()
 				} else {
@@ -393,3 +331,103 @@ func (c *CommandLink) Open() (err error) {
 
 	return
 }
+
+/////////////////////////////////////////////////////////////
+
+type OnceLink struct {
+	BaseLink
+}
+
+func (o *OnceLink) Open() (err error) {
+	fmt.Println("Triggering with the OnceLink")
+	o.doTrigger(Trigger{})
+	return
+}
+
+/////////////////////////////////////////////////////////////
+
+func Run(opts util.Options) (err error) {
+
+	cfgs, err := LoadConfigs(opts)
+	if err != nil {
+		util.E.Annotate(err, "Loading configurations failed")
+		return
+	}
+
+	fmt.Println(cfgs)
+
+	links := make([]Link, len(cfgs)*2)
+
+	for _, cfg := range cfgs {
+		var source, target Link
+
+		if cfg.Exec == "" {
+			continue
+		}
+
+		if cfg.Pattern != "" {
+			source = &FileChangeLink{
+				Patterns: strings.Split(cfg.Pattern, " "),
+			}
+		} else {
+			source = &OnceLink{}
+		}
+
+		fmt.Println("Name", cfg.Name, "Exec", strings.Split(cfg.Exec, " "))
+
+		target = &CommandLink{
+			Args:     strings.Split(cfg.Exec, " "),
+			Stdout:   os.Stdout,
+			Stderr:   os.Stderr,
+			IsDaemon: cfg.IsDaemon,
+		}
+
+		err = Join(source, target)
+		if err != nil {
+			util.E.Annotate(err, "Joining chain", cfg.Name, "Failed")
+			return
+		}
+
+		links = append(links, source, target)
+	}
+
+	return
+}
+
+func Join(links ...Link) (err error) {
+	if links == nil || len(links) <= 1 {
+		err = util.E.New("Invalid arguments")
+		return
+	}
+
+	fmt.Println("links on", links)
+
+	var prev Link
+	prev = nil
+
+	for _, l := range links {
+		if prev != nil {
+			prev.RegisterTrigger(l)
+			l.RegisterReady(prev)
+		}
+		prev = l
+	}
+
+	for i, l := range links {
+		err = l.Open()
+		if err != nil {
+			err = util.E.Annotate(err, "Could not Open Link chain")
+			for i = i - 1; i >= 0; i-- {
+				l.Close()
+			}
+			return
+		}
+	}
+
+	return
+}
+
+
+/////////////////////////////////////////////////////////////
+
+

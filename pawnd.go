@@ -53,25 +53,31 @@ func main() {
 	// 	fault(err, "Trigger test failed")
 	// }
 
-	fc := &pawnd.FileChangeLink{
-		Patterns: []string{"**/*.go"},
-	}
+	// fc := &pawnd.FileChangeLink{
+	// 	Patterns: []string{"**/*.go"},
+	// }
 
-	c := &pawnd.CommandLink{
-		Args: []string{"ls"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		IsDaemon: false,
-	}
+	// c := &pawnd.CommandLink{
+	// 	Args:     []string{"ls"},
+	// 	Stdout:   os.Stdout,
+	// 	Stderr:   os.Stderr,
+	// 	IsDaemon: false,
+	// }
 
-	err = pawnd.Join(fc, c)
-	checkFault(err, "Starting chain failed")
+	// err = pawnd.Join(fc, c)
+	// checkFault(err, "Starting chain failed")
+
+	err = pawnd.Run(opts)
+	checkFault(err, "Running chains failed")
 
 	var input string
 	fmt.Scanln(&input)
-	// close(ch)
-	fc.Close()
-	c.Close()
+	// fc.Close()
+	// c.Close()
+
+	// for _, link := range links {
+	// 	link.Close()
+	// }
 
 	os.Exit(0)
 }
