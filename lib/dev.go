@@ -504,7 +504,7 @@ type CommandEvent struct {
 	IsDaemon bool
 
 	cmd *exec.Cmd
-	wg sync.WaitGroup
+	wg  sync.WaitGroup
 }
 
 func (c *CommandEvent) runCmd() (err error) {
@@ -543,7 +543,6 @@ func (c *CommandEvent) killCmd() (err error) {
 	return
 }
 
-
 func (c *CommandEvent) Run(ID string) (err error) {
 	fmt.Println("Arguments", c.Args)
 	fmt.Println("Starting command executor")
@@ -567,7 +566,7 @@ func (c *CommandEvent) Run(ID string) (err error) {
 
 type OnceSource struct {
 	id string
-	e Emitter
+	e  Emitter
 }
 
 func (o *OnceSource) Init(id string, e Emitter) (err error) {
@@ -580,10 +579,123 @@ func (o *OnceSource) Start() {
 	o.e.Trigger(o.id)
 }
 
-
 /////////////////////////////////////////////////////////////
 
+type FileChangeSource struct {
+	Patterns []string
 
+	// Wait this amount of time from the file change to the actual
+	// triggering
+	Hysteresis time.Duration
+
+	watch *fsnotify.Watcher
+	close chan bool
+	files []string
+
+	OnceSource
+}
+
+func (s *FileChangeSource) Run(id string) (err error) {
+	if s.close == nil {
+		return
+	}
+
+	switch id {
+	case "terminate":
+		s.close <- true
+	}
+
+	return
+}
+
+func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
+	err = s.OnceSource.Init(id, e)
+	if err != nil {
+		return
+	}
+
+	s.files = getFileList(s.Patterns)
+	if len(s.files) == 0 {
+		err = util.E.New("No watched files found")
+		return
+	}
+
+	fmt.Println("Files", s.files)
+
+	if s.Hysteresis == 0 {
+		s.Hysteresis = time.Millisecond * 500
+	}
+
+	// Create a watcher
+	s.watch, err = fsnotify.NewWatcher()
+	if err != nil {
+		err = util.E.Annotate(err, "Creating a file watcher failed")
+		return
+	}
+
+	s.close = make(chan bool)
+	return
+}
+
+func (s *FileChangeSource) Start() {
+
+	stopTimer := func(t *time.Timer) {
+		if !t.Stop() {
+			select {
+			case <-t.C:
+			default:
+			}
+		}
+	}
+
+	// Match non-recursive parts of the patterns against the given file
+	matchPattern := func(file string) bool {
+		file = filepath.Base(file)
+		for _, p := range s.Patterns {
+			m, er := path.Match(filepath.Base(p), file)
+			if m && er == nil {
+				return true
+			}
+		}
+		return false
+	}
+
+	go func() {
+		defer s.watch.Close()
+
+		threshold := time.NewTimer(0)
+		stopTimer(threshold)
+
+		for _, name := range s.files {
+			err := s.watch.Add(name)
+			if err != nil {
+				fmt.Println("Could not watch", name)
+			}
+		}
+
+	loop:
+		for {
+			select {
+			case <-threshold.C:
+				fmt.Println("Would send an event")
+				s.e.Trigger(s.id)
+			case event := <-s.watch.Events:
+				fmt.Println("Event received:", event)
+				if matchPattern(event.Name) {
+					fmt.Println("Pattern matched.")
+					stopTimer(threshold)
+					threshold.Reset(s.Hysteresis)
+				}
+			case err := <-s.watch.Errors:
+				fmt.Println("Error received", err)
+			case <-s.close:
+				break loop
+			}
+		}
+	}()
+
+	return
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -606,13 +718,13 @@ func TestRun(opts util.Options) (err error) {
 			continue
 		}
 
-		// if cfg.Pattern != "" {
-		// 	source = &FileChangeLink{
-		// 		Patterns: strings.Split(cfg.Pattern, " "),
-		// 	}
-		// } else {
+		if cfg.Pattern != "" {
+			source = &FileChangeSource{
+				Patterns: strings.Split(cfg.Pattern, " "),
+			}
+		} else {
 			source = &OnceSource{}
-		// }
+		}
 
 		source.Init(cfg.Name, e)
 
@@ -627,14 +739,6 @@ func TestRun(opts util.Options) (err error) {
 
 		e.On(target, cfg.Name, "terminate")
 		source.Start()
-
-		// err = Join(source, target)
-		// if err != nil {
-		// 	util.E.Annotate(err, "Joining chain", cfg.Name, "Failed")
-		// 	return
-		// }
-
-		// links = append(links, source, target)
 	}
 
 	var input string
