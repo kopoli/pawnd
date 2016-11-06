@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
@@ -530,7 +531,6 @@ func (c *CommandEvent) runCmd() (err error) {
 		}
 		err = util.E.Annotate(err, "Running a command failed with:", ret)
 	}
-	// c.doReady(Trigger{err: err})
 	c.wg.Done()
 
 	return
@@ -539,13 +539,13 @@ func (c *CommandEvent) runCmd() (err error) {
 func (c *CommandEvent) killCmd() (err error) {
 	if c.cmd != nil && c.cmd.Process != nil {
 		err = c.cmd.Process.Kill()
+		fmt.Println("Killing process")
 	}
 	return
 }
 
 func (c *CommandEvent) Run(ID string) (err error) {
 	fmt.Println("Arguments", c.Args)
-	fmt.Println("Starting command executor")
 
 	switch ID {
 	case "terminate":
@@ -554,8 +554,10 @@ func (c *CommandEvent) Run(ID string) (err error) {
 		if c.IsDaemon {
 			_ = c.killCmd()
 		} else {
-			c.wg.Wait()
+			fmt.Println("Waiting process to run")
 		}
+		c.wg.Wait()
+		fmt.Println("Running command")
 		_ = c.runCmd()
 	}
 
@@ -581,6 +583,31 @@ func (o *OnceSource) Start() {
 
 /////////////////////////////////////////////////////////////
 
+type TerminateEvent struct {
+	terminate chan bool
+}
+
+func (t *TerminateEvent) Run(id string) (err error) {
+	if t.terminate == nil {
+		return
+	}
+
+	switch id {
+	case "terminate":
+		t.terminate <- true
+	}
+
+	return
+}
+
+func (t *TerminateEvent) init() {
+	if t.terminate == nil {
+		t.terminate = make(chan bool)
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
 type FileChangeSource struct {
 	Patterns []string
 
@@ -589,23 +616,10 @@ type FileChangeSource struct {
 	Hysteresis time.Duration
 
 	watch *fsnotify.Watcher
-	close chan bool
 	files []string
 
 	OnceSource
-}
-
-func (s *FileChangeSource) Run(id string) (err error) {
-	if s.close == nil {
-		return
-	}
-
-	switch id {
-	case "terminate":
-		s.close <- true
-	}
-
-	return
+	TerminateEvent
 }
 
 func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
@@ -633,7 +647,8 @@ func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
 		return
 	}
 
-	s.close = make(chan bool)
+	s.TerminateEvent.init()
+
 	return
 }
 
@@ -688,13 +703,53 @@ func (s *FileChangeSource) Start() {
 				}
 			case err := <-s.watch.Errors:
 				fmt.Println("Error received", err)
-			case <-s.close:
+			case <-s.terminate:
 				break loop
 			}
 		}
 	}()
 
 	return
+}
+
+/////////////////////////////////////////////////////////////
+
+type SignalSource struct {
+	Signal os.Signal
+	ch     chan os.Signal
+
+	OnceSource
+	TerminateEvent
+}
+
+func (s *SignalSource) Init(id string, e Emitter) (err error) {
+	err = s.OnceSource.Init(id, e)
+	if err != nil {
+		return
+	}
+
+	s.ch = make(chan os.Signal, 1)
+	s.TerminateEvent.init()
+	signal.Notify(s.ch, s.Signal)
+
+	return
+}
+
+func (s *SignalSource) Start() {
+
+	go func() {
+	loop:
+		for {
+			select {
+			case sig := <-s.ch:
+				fmt.Println("Received signal:", sig, "Triggering", s.id)
+				s.e.Trigger(s.id)
+			case <-s.terminate:
+				signal.Reset(s.Signal)
+				break loop
+			}
+		}
+	}()
 }
 
 /////////////////////////////////////////////////////////////
@@ -710,6 +765,13 @@ func TestRun(opts util.Options) (err error) {
 	fmt.Println(cfgs)
 
 	e := &emitter{}
+
+	ss := &SignalSource{
+		Signal: os.Interrupt,
+	}
+
+	ss.Init("terminate", e)
+	ss.Start()
 
 	for _, cfg := range cfgs {
 		var source Source
