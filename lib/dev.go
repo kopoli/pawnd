@@ -810,3 +810,10 @@ func TestRun(opts util.Options) (err error) {
 
 	return
 }
+
+/////////////////////////////////////////////////////////////
+// Outputtia:
+// https://github.com/gosuri/uiprogress
+// https://github.com/gosuri/uilive
+// https://github.com/tj/go-spin
+/////////////////////////////////////////////////////////////
