@@ -24,8 +24,14 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", "pawnd.conf"),
 		"File to read the configuration from.")
 
+	optDemo := app.BoolOpt("d demo", false, "Demo functionality")
+
 	app.Action = func() {
 		opts.Set("configuration-file", *optConfFile)
+
+		if *optDemo {
+			opts.Set("demo-mode", "t")
+		}
 	}
 
 	err = app.Run(argsin)

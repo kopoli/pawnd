@@ -32,53 +32,15 @@ func main() {
 	_, err := pawnd.Cli(opts, os.Args)
 	checkFault(err, "command line parsing failed")
 
-	// ch := make(chan pawnd.Trigger)
+	if opts.IsSet("demo-mode") {
+		pawnd.UiDemo(opts)
+		os.Exit(25)
+	}
 
-	// p := pawnd.Process{
-	// 	Args: []string{"ls"},
-	// 	Stdout: os.Stdout,
-	// 	Stderr: os.Stderr,
-	// 	IsDaemon: false,
-	// }
-
-	// pm := pawnd.ProcessManager{}
-
-	// err = pm.Add(p, ch)
-	// if err != nil {
-	// 	fault(err, "Adding process failed")
-	// }
-
-	// _, err = pawnd.TriggerOnFileChanges([]string{"**/*.go"}, ch)
-	// if err != nil {
-	// 	fault(err, "Trigger test failed")
-	// }
-
-	// fc := &pawnd.FileChangeLink{
-	// 	Patterns: []string{"**/*.go"},
-	// }
-
-	// c := &pawnd.CommandLink{
-	// 	Args:     []string{"ls"},
-	// 	Stdout:   os.Stdout,
-	// 	Stderr:   os.Stderr,
-	// 	IsDaemon: false,
-	// }
-
-	// err = pawnd.Join(fc, c)
-	// checkFault(err, "Starting chain failed")
-
-	// err = pawnd.Run(opts)
 	err = pawnd.TestRun(opts)
 	checkFault(err, "Running chains failed")
 
 	var input string
 	fmt.Scanln(&input)
-	// fc.Close()
-	// c.Close()
-
-	// for _, link := range links {
-	// 	link.Close()
-	// }
-
 	os.Exit(0)
 }
