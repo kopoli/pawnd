@@ -33,6 +33,7 @@ type Emitter interface {
 	// Register Event to string
 	On(Event, ...string) error
 
+	// Emit a trigger
 	Trigger(string)
 }
 
@@ -71,7 +72,7 @@ func (e *emitter) Trigger(ID string) {
 	e.mutex.Lock()
 	e.initialize()
 
-	fmt.Println("Event list", e.events[ID])
+	fmt.Println("Event list on ID", ID, ":", e.events[ID])
 	for _, ev := range e.events[ID] {
 		go func(ID string, ev Event) {
 			fmt.Println("ID", ID, "Event", ev)
@@ -93,10 +94,24 @@ type CommandEvent struct {
 
 	IsDaemon bool
 
-	Emt Emitter
-
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
+
+	BaseSource
+}
+
+func (c *CommandEvent) Init(id string, e Emitter) (err error) {
+	err = c.BaseSource.Init(id, e)
+	if err != nil {
+		return
+	}
+
+	sources.Add(c)
+	return
+}
+
+func (c *CommandEvent) Start() {
+
 }
 
 func (c *CommandEvent) runCmd() (err error) {
@@ -110,6 +125,7 @@ func (c *CommandEvent) runCmd() (err error) {
 		util.E.Print(err, "Starting command failed: ", c.Args)
 		return
 	}
+	c.e.Trigger(c.id + "-start")
 	err = c.cmd.Wait()
 
 	// Determine the exit code
@@ -123,6 +139,7 @@ func (c *CommandEvent) runCmd() (err error) {
 		err = util.E.Annotate(err, "Running a command failed with:", ret)
 	}
 	c.wg.Done()
+	c.e.Trigger(c.id + "-stop")
 
 	return
 }
@@ -130,6 +147,7 @@ func (c *CommandEvent) runCmd() (err error) {
 func (c *CommandEvent) killCmd() (err error) {
 	if c.cmd != nil && c.cmd.Process != nil {
 		err = c.cmd.Process.Kill()
+		c.e.Trigger(c.id + "-stop")
 		fmt.Println("Killing process")
 	}
 	return
@@ -157,15 +175,42 @@ func (c *CommandEvent) Run(ID string) (err error) {
 
 /////////////////////////////////////////////////////////////
 
-type OnceSource struct {
+// List of sources that can be started together
+type sourceList struct {
+	sources []Source
+}
+
+func (s *sourceList) Add(src Source) {
+	s.sources = append(s.sources, src)
+	fmt.Println("Adding", src)
+}
+
+func (s *sourceList) Start() {
+	for _, src := range s.sources {
+		fmt.Println("Starting", src)
+		src.Start()
+	}
+}
+
+var sources sourceList
+
+/////////////////////////////////////////////////////////////
+
+type BaseSource struct {
 	id string
 	e  Emitter
 }
 
-func (o *OnceSource) Init(id string, e Emitter) (err error) {
+func (o *BaseSource) Init(id string, e Emitter) (err error) {
 	o.id = id
 	o.e = e
 	return
+}
+
+/////////////////////////////////////////////////////////////
+
+type OnceSource struct {
+	BaseSource
 }
 
 func (o *OnceSource) Start() {
@@ -209,12 +254,12 @@ type FileChangeSource struct {
 	watch *fsnotify.Watcher
 	files []string
 
-	OnceSource
+	BaseSource
 	TerminateEvent
 }
 
 func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
-	err = s.OnceSource.Init(id, e)
+	err = s.BaseSource.Init(id, e)
 	if err != nil {
 		return
 	}
@@ -239,6 +284,7 @@ func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
 	}
 
 	s.TerminateEvent.init()
+	sources.Add(s)
 
 	return
 }
@@ -309,18 +355,19 @@ type SignalSource struct {
 	Signal os.Signal
 	ch     chan os.Signal
 
-	OnceSource
+	BaseSource
 	TerminateEvent
 }
 
 func (s *SignalSource) Init(id string, e Emitter) (err error) {
-	err = s.OnceSource.Init(id, e)
+	err = s.BaseSource.Init(id, e)
 	if err != nil {
 		return
 	}
 
 	s.ch = make(chan os.Signal, 1)
 	s.TerminateEvent.init()
+	sources.Add(s)
 	signal.Notify(s.ch, s.Signal)
 
 	return
@@ -341,6 +388,19 @@ func (s *SignalSource) Start() {
 			}
 		}
 	}()
+}
+
+
+/////////////////////////////////////////////////////////////
+
+type TerminateBlocker struct {
+	TerminateEvent
+}
+
+func (t *TerminateBlocker) Wait(e Emitter) {
+	t.init()
+	e.On(t, "terminate")
+	<-t.terminate
 }
 
 /////////////////////////////////////////////////////////////
@@ -367,7 +427,7 @@ func TestRun(opts util.Options) (err error) {
 	}
 
 	ss.Init("terminate", e)
-	ss.Start()
+	// ss.Start()
 
 	for _, cfg := range cfgs {
 		var source Source
@@ -393,17 +453,20 @@ func TestRun(opts util.Options) (err error) {
 			Stdout:   os.Stdout,
 			Stderr:   os.Stderr,
 			IsDaemon: cfg.IsDaemon,
-			Emt: e,
 		}
+		target.Init(cfg.Name+"-cmd", e)
 
 		e.On(target, cfg.Name, "terminate")
-		source.Start()
+		// source.Start()
 	}
 
-	WaitOnInput()
+	sources.Start()
+
+	tb := &TerminateBlocker{}
+	tb.Wait(e)
+	// WaitOnInput()
 
 	e.Trigger("terminate")
 
 	return
 }
-
