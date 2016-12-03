@@ -21,7 +21,7 @@ import (
 
 // Event that is triggered
 type Event interface {
-	Run(string) error
+	Run(ID string) error
 }
 
 // FEATURE EventFunc is to Event what http.HandlerFunc is to http.Handler
@@ -33,7 +33,7 @@ type Emitter interface {
 	// Register Event to string
 	On(Event, ...string) error
 
-	// Emit a trigger
+	// Trigger an event
 	Trigger(string)
 }
 
@@ -42,6 +42,87 @@ type Source interface {
 	Init(string, Emitter) error
 
 	Start()
+}
+
+/////////////////////////////////////////////////////////////
+
+type Signal int
+
+const (
+	SIGSELF Signal = iota
+	SIGSTART
+	SIGSUCCESS
+	SIGFAIL
+	SIGKILLED
+)
+
+var signals = []string{"", "-start", "-success", "-fail", "-killed"}
+
+const (
+	TRIGTERM = "terminate"
+)
+
+type Node interface {
+	Event
+
+	Init(string, Emitter) error
+	SetIO(io.Writer, io.Writer)
+
+	Start() error
+	Stop() error
+
+	ID() string
+
+	Signals() []string
+}
+
+type node struct {
+	id string
+	e  Emitter
+
+	Stdout io.Writer
+	Stderr io.Writer
+}
+
+func (n *node) Init(id string, e Emitter) (err error) {
+	n.id = id
+	n.e = e
+	return
+}
+
+func (n *node) SetIO(stdout, stderr io.Writer) {
+	n.Stdout = stdout
+	n.Stderr = stderr
+}
+
+func (n *node) signal(s Signal) {
+	n.e.Trigger(n.id + signals[s])
+}
+
+func (n *node) Signals() (ret []string) {
+	ret = make([]string, len(signals))
+
+	for i := range signals {
+		ret[i] = n.id + signals[i]
+	}
+
+	return
+}
+
+func (n *node) Start() error {
+	return nil
+}
+
+func (n *node) Stop() error {
+	return nil
+}
+
+func (n *node) ID() string {
+	return n.id
+}
+
+func (n *node) Run(id string) error {
+	return nil
 }
 
 /////////////////////////////////////////////////////////////
@@ -89,30 +170,32 @@ type CommandEvent struct {
 
 	CoolDown time.Duration
 
-	Stdout io.Writer
-	Stderr io.Writer
+	// Stdout io.Writer
+	// Stderr io.Writer
 
 	IsDaemon bool
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
 
-	BaseSource
+	// BaseSource
+
+	node
 }
 
-func (c *CommandEvent) Init(id string, e Emitter) (err error) {
-	err = c.BaseSource.Init(id, e)
-	if err != nil {
-		return
-	}
+// func (c *CommandEvent) Init(id string, e Emitter) (err error) {
+// 	err = c.node.Init(id, e)
+// 	if err != nil {
+// 		return
+// 	}
 
-	sources.Add(c)
-	return
-}
+// 	// sources.Add(c)
+// 	return
+// }
 
-func (c *CommandEvent) Start() {
+// func (c *CommandEvent) Start() {
 
-}
+// }
 
 func (c *CommandEvent) runCmd() (err error) {
 	c.wg.Add(1)
@@ -125,8 +208,10 @@ func (c *CommandEvent) runCmd() (err error) {
 		util.E.Print(err, "Starting command failed: ", c.Args)
 		return
 	}
-	c.e.Trigger(c.id + "-start")
+
+	c.signal(SIGSTART)
 	err = c.cmd.Wait()
+	retsignal := SIGSUCCESS
 
 	// Determine the exit code
 	if err != nil {
@@ -137,9 +222,10 @@ func (c *CommandEvent) runCmd() (err error) {
 			}
 		}
 		err = util.E.Annotate(err, "Running a command failed with:", ret)
+		retsignal = SIGFAIL
 	}
 	c.wg.Done()
-	c.e.Trigger(c.id + "-stop")
+	c.signal(retsignal)
 
 	return
 }
@@ -147,7 +233,7 @@ func (c *CommandEvent) runCmd() (err error) {
 func (c *CommandEvent) killCmd() (err error) {
 	if c.cmd != nil && c.cmd.Process != nil {
 		err = c.cmd.Process.Kill()
-		c.e.Trigger(c.id + "-stop")
+		c.signal(SIGKILLED)
 		fmt.Println("Killing process")
 	}
 	return
@@ -157,7 +243,7 @@ func (c *CommandEvent) Run(ID string) (err error) {
 	fmt.Println("Arguments", c.Args)
 
 	switch ID {
-	case "terminate":
+	case TRIGTERM:
 		_ = c.killCmd()
 	default:
 		if c.IsDaemon {
@@ -176,51 +262,55 @@ func (c *CommandEvent) Run(ID string) (err error) {
 /////////////////////////////////////////////////////////////
 
 // List of sources that can be started together
-type sourceList struct {
-	sources []Source
-}
+// type sourceList struct {
+// 	sources []Source
+// }
 
-func (s *sourceList) Add(src Source) {
-	s.sources = append(s.sources, src)
-	fmt.Println("Adding", src)
-}
+// func (s *sourceList) Add(src Source) {
+// 	s.sources = append(s.sources, src)
+// 	fmt.Println("Adding", src)
+// }
 
-func (s *sourceList) Start() {
-	for _, src := range s.sources {
-		fmt.Println("Starting", src)
-		src.Start()
-	}
-}
+// func (s *sourceList) Start() {
+// 	for _, src := range s.sources {
+// 		fmt.Println("Starting", src)
+// 		src.Start()
+// 	}
+// }
 
-var sources sourceList
+// var sources sourceList
 
 /////////////////////////////////////////////////////////////
 
-type BaseSource struct {
-	id string
-	e  Emitter
-}
+// type BaseSource struct {
+// 	id string
+// 	e  Emitter
+// }
 
-func (o *BaseSource) Init(id string, e Emitter) (err error) {
-	o.id = id
-	o.e = e
-	return
-}
+// func (o *BaseSource) Init(id string, e Emitter) (err error) {
+// 	o.id = id
+// 	o.e = e
+// 	return
+// }
 
 /////////////////////////////////////////////////////////////
 
 type OnceSource struct {
-	BaseSource
+	// BaseSource
+	node
 }
 
-func (o *OnceSource) Start() {
-	o.e.Trigger(o.id)
+func (o *OnceSource) Start() error {
+	o.signal(SIGSELF)
+	return nil
 }
 
 /////////////////////////////////////////////////////////////
 
 type TerminateEvent struct {
 	terminate chan bool
+
+	node
 }
 
 func (t *TerminateEvent) Run(id string) (err error) {
@@ -229,17 +319,23 @@ func (t *TerminateEvent) Run(id string) (err error) {
 	}
 
 	switch id {
-	case "terminate":
+	case TRIGTERM:
 		t.terminate <- true
 	}
 
 	return
 }
 
-func (t *TerminateEvent) init() {
+func (t *TerminateEvent) Init(id string, e Emitter) (err error) {
+	err = t.node.Init(id, e)
+	if err != nil {
+		return
+	}
+
 	if t.terminate == nil {
 		t.terminate = make(chan bool)
 	}
+	return
 }
 
 /////////////////////////////////////////////////////////////
@@ -254,12 +350,13 @@ type FileChangeSource struct {
 	watch *fsnotify.Watcher
 	files []string
 
-	BaseSource
+	// BaseSource
+	// node
 	TerminateEvent
 }
 
 func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
-	err = s.BaseSource.Init(id, e)
+	err = s.TerminateEvent.Init(id, e)
 	if err != nil {
 		return
 	}
@@ -283,13 +380,12 @@ func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
 		return
 	}
 
-	s.TerminateEvent.init()
-	sources.Add(s)
+	// sources.Add(s)
 
 	return
 }
 
-func (s *FileChangeSource) Start() {
+func (s *FileChangeSource) Start() (err error) {
 
 	stopTimer := func(t *time.Timer) {
 		if !t.Stop() {
@@ -330,7 +426,8 @@ func (s *FileChangeSource) Start() {
 			select {
 			case <-threshold.C:
 				fmt.Println("Would send an event")
-				s.e.Trigger(s.id)
+				s.signal(SIGSELF)
+				// s.e.Trigger(s.id)
 			case event := <-s.watch.Events:
 				fmt.Println("Event received:", event)
 				if matchPattern(event.Name) {
@@ -355,25 +452,23 @@ type SignalSource struct {
 	Signal os.Signal
 	ch     chan os.Signal
 
-	BaseSource
 	TerminateEvent
 }
 
-func (s *SignalSource) Init(id string, e Emitter) (err error) {
-	err = s.BaseSource.Init(id, e)
+func (s *SignalSource) Init(ID string, e Emitter) (err error) {
+	err = s.TerminateEvent.Init(TRIGTERM, e)
 	if err != nil {
 		return
 	}
 
 	s.ch = make(chan os.Signal, 1)
-	s.TerminateEvent.init()
-	sources.Add(s)
+	// sources.Add(s)
 	signal.Notify(s.ch, s.Signal)
 
 	return
 }
 
-func (s *SignalSource) Start() {
+func (s *SignalSource) Start() error {
 
 	go func() {
 	loop:
@@ -381,15 +476,15 @@ func (s *SignalSource) Start() {
 			select {
 			case sig := <-s.ch:
 				fmt.Println("Received signal:", sig, "Triggering", s.id)
-				s.e.Trigger(s.id)
+				s.signal(SIGSELF)
 			case <-s.terminate:
 				signal.Reset(s.Signal)
 				break loop
 			}
 		}
 	}()
+	return nil
 }
-
 
 /////////////////////////////////////////////////////////////
 
@@ -397,10 +492,52 @@ type TerminateBlocker struct {
 	TerminateEvent
 }
 
-func (t *TerminateBlocker) Wait(e Emitter) {
-	t.init()
-	e.On(t, "terminate")
+func (t *TerminateBlocker) Wait(e Emitter) (err error) {
+	err = t.TerminateEvent.Init("", e)
+	if err != nil {
+		return
+	}
+	e.On(t, TRIGTERM)
 	<-t.terminate
+
+	return
+}
+
+/////////////////////////////////////////////////////////////
+
+type Handler struct {
+	emt   Emitter
+	nodes []Node
+	out   Output
+}
+
+func (h *Handler) JoinNodes(nodes ...Node) (err error) {
+	var prev Node
+	prev = nil
+
+	for _, n := range nodes {
+		err = n.Init(n.ID(), h.emt)
+		if err != nil {
+			err = util.E.Annotate(err, "Initializating node", n.ID(), "failed")
+			return
+		}
+		n.SetIO(h.out.Stdout(), h.out.Stderr())
+
+		h.emt.On(n, TRIGTERM)
+
+		if prev != nil {
+			h.emt.On(n, prev.Signals()...)
+		}
+
+		h.nodes = append(h.nodes, n)
+		prev = n
+	}
+
+	for _, n := range nodes {
+		_ = n.Start()
+	}
+
+	return
 }
 
 /////////////////////////////////////////////////////////////
@@ -411,62 +548,129 @@ func WaitOnInput() {
 }
 
 func TestRun(opts util.Options) (err error) {
-
 	cfgs, err := LoadConfigs(opts)
 	if err != nil {
-		util.E.Annotate(err, "Loading configurations failed")
+		err = util.E.Annotate(err, "Loading configurations failed")
 		return
 	}
 
 	fmt.Println(cfgs)
 
-	e := &emitter{}
-
-	ss := &SignalSource{
-		Signal: os.Interrupt,
+	handler := &Handler{
+		emt: &emitter{},
+		out: &output{
+			out: os.Stdout,
+			err: os.Stderr,
+		},
 	}
 
-	ss.Init("terminate", e)
-	// ss.Start()
+	sig := &SignalSource{
+		Signal: os.Interrupt,
+	}
+	sig.id = TRIGTERM
+
+	err = handler.JoinNodes(sig)
+	if err != nil {
+		err = util.E.Annotate(err, "Initializing signal source failed")
+		return
+	}
 
 	for _, cfg := range cfgs {
-		var source Source
-
+		var source Node
 		if cfg.Exec == "" {
 			continue
 		}
 
 		if cfg.Pattern != "" {
-			source = &FileChangeSource{
+			fcs := &FileChangeSource{
 				Patterns: strings.Split(cfg.Pattern, " "),
 			}
+			fcs.id = cfg.Name
+			source = fcs
 		} else {
-			source = &OnceSource{}
+			os := &OnceSource{}
+			os.id = cfg.Name
+			source = os
 		}
-
-		source.Init(cfg.Name, e)
-
-		fmt.Println("Name", cfg.Name, "Exec", strings.Split(cfg.Exec, " "))
 
 		target := &CommandEvent{
 			Args:     strings.Split(cfg.Exec, " "),
-			Stdout:   os.Stdout,
-			Stderr:   os.Stderr,
 			IsDaemon: cfg.IsDaemon,
 		}
-		target.Init(cfg.Name+"-cmd", e)
+		target.id = cfg.Name + "-cmd"
 
-		e.On(target, cfg.Name, "terminate")
-		// source.Start()
+		err = handler.JoinNodes(source, target)
+		if err != nil {
+			err = util.E.Annotate(err, "Initializing configuration", cfg.Name, "failed")
+			return
+		}
 	}
 
-	sources.Start()
+	// tb := &TerminateBlocker{}
+	// tb.Wait(e)
+	WaitOnInput()
 
-	tb := &TerminateBlocker{}
-	tb.Wait(e)
-	// WaitOnInput()
-
-	e.Trigger("terminate")
-
+	handler.emt.Trigger(TRIGTERM)
 	return
 }
+
+// func TestRun2(opts util.Options) (err error) {
+
+// 	cfgs, err := LoadConfigs(opts)
+// 	if err != nil {
+// 		err = util.E.Annotate(err, "Loading configurations failed")
+// 		return
+// 	}
+
+// 	fmt.Println(cfgs)
+
+// 	e := &emitter{}
+
+// 	ss := &SignalSource{
+// 		Signal: os.Interrupt,
+// 	}
+
+// 	ss.Init(e)
+// 	// ss.Start()
+
+// 	for _, cfg := range cfgs {
+// 		var source Source
+
+// 		if cfg.Exec == "" {
+// 			continue
+// 		}
+
+// 		if cfg.Pattern != "" {
+// 			source = &FileChangeSource{
+// 				Patterns: strings.Split(cfg.Pattern, " "),
+// 			}
+// 		} else {
+// 			// source = &OnceSource{}
+// 		}
+
+// 		source.Init(cfg.Name, e)
+
+// 		fmt.Println("Name", cfg.Name, "Exec", strings.Split(cfg.Exec, " "))
+
+// 		target := &CommandEvent{
+// 			Args:     strings.Split(cfg.Exec, " "),
+// 			IsDaemon: cfg.IsDaemon,
+// 		}
+// 		target.Stdout = os.Stdout
+// 		target.Stderr = os.Stderr
+// 		target.Init(cfg.Name+"-cmd", e)
+
+// 		e.On(target, cfg.Name, TRIGTERM)
+// 		// source.Start()
+// 	}
+
+// 	sources.Start()
+
+// 	tb := &TerminateBlocker{}
+// 	tb.Wait(e)
+// 	// WaitOnInput()
+
+// 	e.Trigger(TRIGTERM)
+
+// 	return
+// }

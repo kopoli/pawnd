@@ -18,17 +18,37 @@ import (
 
 /////////////////////////////////////////////////////////////
 
-type PrefixedWriter struct {
-	prefix []byte
-	eol []byte
-	out io.Writer
+type Output interface {
+	Stdout() io.Writer
+	Stderr() io.Writer
 }
 
-func NewPrefixedWriter(prefix string, style string, out io.Writer) (*PrefixedWriter) {
+type output struct {
+	out io.Writer
+	err io.Writer
+}
+
+func (o *output) Stdout() io.Writer {
+	return o.out
+}
+
+func (o *output) Stderr() io.Writer {
+	return o.err
+}
+
+/////////////////////////////////////////////////////////////
+
+type PrefixedWriter struct {
+	prefix []byte
+	eol    []byte
+	out    io.Writer
+}
+
+func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWriter {
 	return &PrefixedWriter{
 		prefix: []byte(prefix + ansi.ColorCode(style)),
-		eol: []byte("" + ansi.Reset + "\n"),
-		out: out,
+		eol:    []byte("" + ansi.Reset + "\n"),
+		out:    out,
 	}
 }
 
