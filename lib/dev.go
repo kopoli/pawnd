@@ -170,32 +170,13 @@ type CommandEvent struct {
 
 	CoolDown time.Duration
 
-	// Stdout io.Writer
-	// Stderr io.Writer
-
 	IsDaemon bool
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
 
-	// BaseSource
-
 	node
 }
-
-// func (c *CommandEvent) Init(id string, e Emitter) (err error) {
-// 	err = c.node.Init(id, e)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	// sources.Add(c)
-// 	return
-// }
-
-// func (c *CommandEvent) Start() {
-
-// }
 
 func (c *CommandEvent) runCmd() (err error) {
 	c.wg.Add(1)
@@ -261,42 +242,7 @@ func (c *CommandEvent) Run(ID string) (err error) {
 
 /////////////////////////////////////////////////////////////
 
-// List of sources that can be started together
-// type sourceList struct {
-// 	sources []Source
-// }
-
-// func (s *sourceList) Add(src Source) {
-// 	s.sources = append(s.sources, src)
-// 	fmt.Println("Adding", src)
-// }
-
-// func (s *sourceList) Start() {
-// 	for _, src := range s.sources {
-// 		fmt.Println("Starting", src)
-// 		src.Start()
-// 	}
-// }
-
-// var sources sourceList
-
-/////////////////////////////////////////////////////////////
-
-// type BaseSource struct {
-// 	id string
-// 	e  Emitter
-// }
-
-// func (o *BaseSource) Init(id string, e Emitter) (err error) {
-// 	o.id = id
-// 	o.e = e
-// 	return
-// }
-
-/////////////////////////////////////////////////////////////
-
 type OnceSource struct {
-	// BaseSource
 	node
 }
 
@@ -350,8 +296,6 @@ type FileChangeSource struct {
 	watch *fsnotify.Watcher
 	files []string
 
-	// BaseSource
-	// node
 	TerminateEvent
 }
 
@@ -379,8 +323,6 @@ func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
 		err = util.E.Annotate(err, "Creating a file watcher failed")
 		return
 	}
-
-	// sources.Add(s)
 
 	return
 }
@@ -427,7 +369,6 @@ func (s *FileChangeSource) Start() (err error) {
 			case <-threshold.C:
 				fmt.Println("Would send an event")
 				s.signal(SIGSELF)
-				// s.e.Trigger(s.id)
 			case event := <-s.watch.Events:
 				fmt.Println("Event received:", event)
 				if matchPattern(event.Name) {
@@ -462,7 +403,6 @@ func (s *SignalSource) Init(ID string, e Emitter) (err error) {
 	}
 
 	s.ch = make(chan os.Signal, 1)
-	// sources.Add(s)
 	signal.Notify(s.ch, s.Signal)
 
 	return
@@ -506,9 +446,9 @@ func (t *TerminateBlocker) Wait(e Emitter) (err error) {
 /////////////////////////////////////////////////////////////
 
 type Handler struct {
-	emt   Emitter
-	nodes []Node
-	out   Output
+	emitter Emitter
+	nodes   []Node
+	output  Output
 }
 
 func (h *Handler) JoinNodes(nodes ...Node) (err error) {
@@ -516,17 +456,17 @@ func (h *Handler) JoinNodes(nodes ...Node) (err error) {
 	prev = nil
 
 	for _, n := range nodes {
-		err = n.Init(n.ID(), h.emt)
+		err = n.Init(n.ID(), h.emitter)
 		if err != nil {
 			err = util.E.Annotate(err, "Initializating node", n.ID(), "failed")
 			return
 		}
-		n.SetIO(h.out.Stdout(), h.out.Stderr())
+		n.SetIO(h.output.Stdout(n.ID()), h.output.Stderr(n.ID()))
 
-		h.emt.On(n, TRIGTERM)
+		h.emitter.On(n, TRIGTERM)
 
 		if prev != nil {
-			h.emt.On(n, prev.Signals()...)
+			h.emitter.On(n, prev.Signals()...)
 		}
 
 		h.nodes = append(h.nodes, n)
@@ -538,6 +478,10 @@ func (h *Handler) JoinNodes(nodes ...Node) (err error) {
 	}
 
 	return
+}
+
+func (h *Handler) Terminate() {
+	h.emitter.Trigger(TRIGTERM)
 }
 
 /////////////////////////////////////////////////////////////
@@ -557,8 +501,8 @@ func TestRun(opts util.Options) (err error) {
 	fmt.Println(cfgs)
 
 	handler := &Handler{
-		emt: &emitter{},
-		out: &output{
+		emitter: &emitter{},
+		output: &output{
 			out: os.Stdout,
 			err: os.Stderr,
 		},
@@ -610,67 +554,9 @@ func TestRun(opts util.Options) (err error) {
 	// tb.Wait(e)
 	WaitOnInput()
 
-	handler.emt.Trigger(TRIGTERM)
+	handler.Terminate()
+
+	// TODO there must be enough time to kill all the goroutines
+	time.Sleep(time.Second)
 	return
 }
-
-// func TestRun2(opts util.Options) (err error) {
-
-// 	cfgs, err := LoadConfigs(opts)
-// 	if err != nil {
-// 		err = util.E.Annotate(err, "Loading configurations failed")
-// 		return
-// 	}
-
-// 	fmt.Println(cfgs)
-
-// 	e := &emitter{}
-
-// 	ss := &SignalSource{
-// 		Signal: os.Interrupt,
-// 	}
-
-// 	ss.Init(e)
-// 	// ss.Start()
-
-// 	for _, cfg := range cfgs {
-// 		var source Source
-
-// 		if cfg.Exec == "" {
-// 			continue
-// 		}
-
-// 		if cfg.Pattern != "" {
-// 			source = &FileChangeSource{
-// 				Patterns: strings.Split(cfg.Pattern, " "),
-// 			}
-// 		} else {
-// 			// source = &OnceSource{}
-// 		}
-
-// 		source.Init(cfg.Name, e)
-
-// 		fmt.Println("Name", cfg.Name, "Exec", strings.Split(cfg.Exec, " "))
-
-// 		target := &CommandEvent{
-// 			Args:     strings.Split(cfg.Exec, " "),
-// 			IsDaemon: cfg.IsDaemon,
-// 		}
-// 		target.Stdout = os.Stdout
-// 		target.Stderr = os.Stderr
-// 		target.Init(cfg.Name+"-cmd", e)
-
-// 		e.On(target, cfg.Name, TRIGTERM)
-// 		// source.Start()
-// 	}
-
-// 	sources.Start()
-
-// 	tb := &TerminateBlocker{}
-// 	tb.Wait(e)
-// 	// WaitOnInput()
-
-// 	e.Trigger(TRIGTERM)
-
-// 	return
-// }

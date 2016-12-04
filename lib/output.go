@@ -19,8 +19,8 @@ import (
 /////////////////////////////////////////////////////////////
 
 type Output interface {
-	Stdout() io.Writer
-	Stderr() io.Writer
+	Stdout(string) io.Writer
+	Stderr(string) io.Writer
 }
 
 type output struct {
@@ -28,11 +28,16 @@ type output struct {
 	err io.Writer
 }
 
-func (o *output) Stdout() io.Writer {
+func NewOutput() (ret *output) {
+	ret = &output{}
+	return
+}
+
+func (o *output) Stdout(ID string) io.Writer {
 	return o.out
 }
 
-func (o *output) Stderr() io.Writer {
+func (o *output) Stderr(ID string) io.Writer {
 	return o.err
 }
 

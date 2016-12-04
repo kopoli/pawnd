@@ -40,7 +40,5 @@ func main() {
 	err = pawnd.TestRun(opts)
 	checkFault(err, "Running chains failed")
 
-	var input string
-	fmt.Scanln(&input)
 	os.Exit(0)
 }
