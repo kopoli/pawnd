@@ -37,13 +37,6 @@ type Emitter interface {
 	Trigger(string)
 }
 
-// A "Daemon" that Triggers events on an emitter
-type Source interface {
-	Init(string, Emitter) error
-
-	Start()
-}
-
 /////////////////////////////////////////////////////////////
 
 type Signal int
@@ -215,13 +208,13 @@ func (c *CommandEvent) killCmd() (err error) {
 	if c.cmd != nil && c.cmd.Process != nil {
 		err = c.cmd.Process.Kill()
 		c.signal(SIGKILLED)
-		fmt.Println("Killing process")
+		fmt.Fprintln(c.Stdout, "Killing process")
 	}
 	return
 }
 
 func (c *CommandEvent) Run(ID string) (err error) {
-	fmt.Println("Arguments", c.Args)
+	fmt.Fprintln(c.Stdout, "Arguments", c.Args)
 
 	switch ID {
 	case TRIGTERM:
@@ -230,10 +223,10 @@ func (c *CommandEvent) Run(ID string) (err error) {
 		if c.IsDaemon {
 			_ = c.killCmd()
 		} else {
-			fmt.Println("Waiting process to run")
+			fmt.Fprintln(c.Stdout, "Waiting process to run")
 		}
 		c.wg.Wait()
-		fmt.Println("Running command")
+		fmt.Fprintln(c.Stdout, "Running command")
 		_ = c.runCmd()
 	}
 
@@ -455,19 +448,24 @@ func (h *Handler) JoinNodes(nodes ...Node) (err error) {
 	var prev Node
 	prev = nil
 
+	h.emitter.On(h.output, TRIGTERM)
+
 	for _, n := range nodes {
 		err = n.Init(n.ID(), h.emitter)
 		if err != nil {
 			err = util.E.Annotate(err, "Initializating node", n.ID(), "failed")
 			return
 		}
-		n.SetIO(h.output.Stdout(n.ID()), h.output.Stderr(n.ID()))
+		// n.SetIO(h.output.Stdout(n.ID()), h.output.Stderr(n.ID()))
+		h.output.Register(n)
 
 		h.emitter.On(n, TRIGTERM)
 
 		if prev != nil {
 			h.emitter.On(n, prev.Signals()...)
 		}
+
+		h.emitter.On(h.output, n.Signals()...)
 
 		h.nodes = append(h.nodes, n)
 		prev = n
@@ -500,12 +498,11 @@ func TestRun(opts util.Options) (err error) {
 
 	fmt.Println(cfgs)
 
+	emt := &emitter{}
+
 	handler := &Handler{
-		emitter: &emitter{},
-		output: &output{
-			out: os.Stdout,
-			err: os.Stderr,
-		},
+		emitter: emt,
+		output: newOutput(opts, emt),
 	}
 
 	sig := &SignalSource{
