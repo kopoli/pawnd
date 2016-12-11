@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/ahmetalpbalkan/go-cursor"
-	"github.com/mattn/go-colorable"
+	cursor "github.com/ahmetalpbalkan/go-cursor"
+	colorable "github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
 
 	"github.com/gosuri/uilive"
@@ -19,25 +20,25 @@ import (
 
 /////////////////////////////////////////////////////////////
 
-type outWriter struct {
-	ID   string
-	Next io.Writer
+// type outWriter struct {
+// 	ID   string
+// 	Next io.Writer
 
-	isBlocked bool
-}
+// 	isBlocked bool
+// }
 
-func (o *outWriter) Write(buf []byte) (n int, err error) {
-	return o.Next.Write(buf)
-}
+// func (o *outWriter) Write(buf []byte) (n int, err error) {
+// 	return o.Next.Write(buf)
+// }
 
-func newOutWriter(ID string, next io.Writer) (ret *outWriter) {
-	ret = &outWriter{
-		ID:        ID,
-		Next:      NewPrefixedWriter("["+ID+"] ", "", next),
-		isBlocked: false,
-	}
-	return
-}
+// func newOutWriter(ID string, next io.Writer) (ret *outWriter) {
+// 	ret = &outWriter{
+// 		ID:        ID,
+// 		Next:      NewPrefixedWriter("["+ID+"] ", "", next),
+// 		isBlocked: false,
+// 	}
+// 	return
+// }
 
 // Caset:
 // 1. ei printata mitään paitsi jos komento feilaa. Sitten printataan koko hoito.
@@ -45,7 +46,7 @@ func newOutWriter(ID string, next io.Writer) (ret *outWriter) {
 
 type Output interface {
 	Register(Node) error
-	Update()
+	Start() error
 
 	Event
 }
@@ -77,18 +78,24 @@ type output struct {
 	width int
 
 	Prefixer *PrefixedWriter
+	outputs  []*outputStatus
 
-	outputs []*outputStatus
+	firstIteration bool
+
+	drawTicker *time.Ticker
+	terminate  chan bool
+
+	writeLock  sync.Mutex
+	updateLock sync.Mutex
 }
 
 func newOutput(opts util.Options, emt Emitter) (ret *output) {
 	ret = &output{
-		// out: os.Stdout,
-		out: colorable.NewColorableStdout(),
-		// err: os.Stderr,
-		Prefixer: NewPrefixedWriter("", "", nil),
-		emt:      emt,
-		width:    80,
+		out:       colorable.NewColorableStdout(),
+		Prefixer:  NewPrefixedWriter("", "", nil),
+		emt:       emt,
+		width:     80,
+		terminate: make(chan bool),
 	}
 
 	ret.Prefixer.Out = ret.out
@@ -97,6 +104,7 @@ func newOutput(opts util.Options, emt Emitter) (ret *output) {
 }
 
 func (o *output) WriteID(ID string, buf []byte) (n int, err error) {
+	o.writeLock.Lock()
 	prefix := "[" + ID + "] "
 	if strings.HasSuffix(ID, "-err") {
 		prefix += ansi.ColorCode("red+b")
@@ -104,34 +112,76 @@ func (o *output) WriteID(ID string, buf []byte) (n int, err error) {
 
 	o.Prefixer.Prefix = []byte(prefix)
 	n, err = o.Prefixer.Write(buf)
+	o.writeLock.Unlock()
 
-	o.Update()
+	o.update()
 	return
 }
 
-func (o *output) Update() {
+var spinner = `-/|\`
+
+func drawProgress(os *outputStatus, maxwidth int, out *bytes.Buffer) {
+	id := strings.TrimSuffix(os.ID, "-cmd")
+	fmt.Fprintf(out, "[%s][%s] ", id, os.Status)
+	if os.Progress >= 0 {
+		out.WriteByte('[')
+		fillwidth := maxwidth * os.Progress / 100
+		for i := 0; i < fillwidth-1; i++ {
+			out.WriteByte('=')
+		}
+		out.WriteByte('>')
+
+		for i := 0; i < maxwidth-fillwidth; i++ {
+			out.WriteByte('-')
+		}
+		out.WriteByte(']')
+	} else {
+		out.WriteByte(spinner[(os.Progress*-1)%len(spinner)])
+	}
+	out.WriteByte('\n')
+}
+
+func (o *output) update() {
+	o.updateLock.Lock()
 	tmp := &bytes.Buffer{}
 
-	for _, os := range o.outputs {
-		// cursor
-		// os.drawProgress()
-		// cursor
-
-		fmt.Fprintf(tmp, "[%s][%s][", os.ID, os.Status)
-		fillwidth := o.width * os.Progress / 100
-		for i := 0; i < fillwidth; i++ {
-			tmp.WriteByte('=')
-		}
-
-		for i := 0; i < o.width-fillwidth; i++ {
-			tmp.WriteByte('-')
-		}
-		fmt.Fprintf(tmp, "]\n")
+	if !o.firstIteration {
+		fmt.Fprintf(tmp, "%s", cursor.MoveUp(len(o.outputs)-1))
 	}
 
-	fmt.Fprintf(tmp, "%s", cursor.MoveUp(len(o.outputs)))
+	for _, os := range o.outputs {
+		if !strings.HasSuffix(os.ID, "-cmd") {
+			continue
+		}
+
+		fmt.Fprintf(tmp, "%s", cursor.ClearLineLeft())
+		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(1) + cursor.ClearLineLeft())
+		drawProgress(os, o.width, tmp)
+	}
 
 	tmp.WriteTo(o.out)
+	o.firstIteration = false
+	o.updateLock.Unlock()
+}
+
+func (o *output) Start() (err error) {
+	o.drawTicker = time.NewTicker(time.Millisecond * 1000)
+	o.firstIteration = true
+
+	go func() {
+	loop:
+		for {
+			select {
+			case <-o.drawTicker.C:
+				o.update()
+			case <-o.terminate:
+				o.drawTicker.Stop()
+				break loop
+			}
+		}
+	}()
+
+	return
 }
 
 func (o *output) Register(node Node) (err error) {
@@ -155,11 +205,11 @@ func (o *output) Register(node Node) (err error) {
 
 func (o *output) Run(ID string) (err error) {
 	fmt.Fprintln(o.out, "Output received trigger on:", ID)
-	return
-}
 
-func (o *output) Start() (err error) {
-
+	switch ID {
+	case TRIGTERM:
+		o.terminate <- true
+	}
 	return
 }
 

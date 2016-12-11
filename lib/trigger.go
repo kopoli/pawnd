@@ -20,14 +20,6 @@ type TriggerHandler struct {
 	done chan bool
 }
 
-// type Triggerable interface {
-// 	SetInput(<-chan Trigger) error
-// }
-
-// type Triggerer interface {
-// 	SetOutput(chan<- Trigger) error
-// }
-
 // Remove duplicate strings from the list
 func uniqStr(in []string) (out []string) {
 	set := make(map[string]bool, len(in))
@@ -38,7 +30,7 @@ func uniqStr(in []string) (out []string) {
 	out = make([]string, len(set))
 	for item := range set {
 		out = append(out, item)
-		fmt.Println("item:[", item, "]")
+		// fmt.Println("item:[", item, "]")
 	}
 	return
 }
@@ -72,7 +64,7 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 		return
 	}
 
-	fmt.Println("Files", files)
+	// fmt.Println("Files", files)
 
 	// Create a watcher
 	watch, err := fsnotify.NewWatcher()
@@ -121,12 +113,12 @@ func TriggerOnFileChanges(patterns []string, t chan<- Trigger) (th TriggerHandle
 		for {
 			select {
 			case <-threshold.C:
-				fmt.Println("Would send an event")
+				// fmt.Println("Would send an event")
 				t <- Trigger{}
 			case event := <-watch.Events:
-				fmt.Println("Event received:", event)
+				// fmt.Println("Event received:", event)
 				if matchPattern(event.Name) {
-					fmt.Println("Pattern matched.")
+					// fmt.Println("Pattern matched.")
 					stopTimer(threshold)
 					threshold.Reset(time.Millisecond * 500)
 				}

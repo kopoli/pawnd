@@ -146,10 +146,10 @@ func (e *emitter) Trigger(ID string) {
 	e.mutex.Lock()
 	e.initialize()
 
-	fmt.Println("Event list on ID", ID, ":", e.events[ID])
+	// fmt.Println("Event list on ID", ID, ":", e.events[ID])
 	for _, ev := range e.events[ID] {
 		go func(ID string, ev Event) {
-			fmt.Println("ID", ID, "Event", ev)
+			// fmt.Println("ID", ID, "Event", ev)
 			_ = ev.Run(ID)
 		}(ID, ev)
 	}
@@ -304,7 +304,7 @@ func (s *FileChangeSource) Init(id string, e Emitter) (err error) {
 		return
 	}
 
-	fmt.Println("Files", s.files)
+	fmt.Fprintln(s.Stdout, "Files", s.files)
 
 	if s.Hysteresis == 0 {
 		s.Hysteresis = time.Millisecond * 500
@@ -352,7 +352,7 @@ func (s *FileChangeSource) Start() (err error) {
 		for _, name := range s.files {
 			err := s.watch.Add(name)
 			if err != nil {
-				fmt.Println("Could not watch", name)
+				fmt.Fprintln(s.Stdout, "Could not watch", name)
 			}
 		}
 
@@ -360,17 +360,17 @@ func (s *FileChangeSource) Start() (err error) {
 		for {
 			select {
 			case <-threshold.C:
-				fmt.Println("Would send an event")
+				fmt.Fprintln(s.Stdout, "Would send an event")
 				s.signal(SIGSELF)
 			case event := <-s.watch.Events:
-				fmt.Println("Event received:", event)
+				fmt.Fprintln(s.Stdout, "Event received:", event)
 				if matchPattern(event.Name) {
-					fmt.Println("Pattern matched.")
+					fmt.Fprintln(s.Stdout, "Pattern matched.")
 					stopTimer(threshold)
 					threshold.Reset(s.Hysteresis)
 				}
 			case err := <-s.watch.Errors:
-				fmt.Println("Error received", err)
+				fmt.Fprintln(s.Stdout, "Error received", err)
 			case <-s.terminate:
 				break loop
 			}
@@ -408,7 +408,7 @@ func (s *SignalSource) Start() error {
 		for {
 			select {
 			case sig := <-s.ch:
-				fmt.Println("Received signal:", sig, "Triggering", s.id)
+				fmt.Fprintln(s.Stdout, "Received signal:", sig, "Triggering", s.id)
 				s.signal(SIGSELF)
 			case <-s.terminate:
 				signal.Reset(s.Signal)
@@ -451,13 +451,12 @@ func (h *Handler) JoinNodes(nodes ...Node) (err error) {
 	h.emitter.On(h.output, TRIGTERM)
 
 	for _, n := range nodes {
+		h.output.Register(n)
 		err = n.Init(n.ID(), h.emitter)
 		if err != nil {
 			err = util.E.Annotate(err, "Initializating node", n.ID(), "failed")
 			return
 		}
-		// n.SetIO(h.output.Stdout(n.ID()), h.output.Stderr(n.ID()))
-		h.output.Register(n)
 
 		h.emitter.On(n, TRIGTERM)
 
@@ -502,7 +501,7 @@ func TestRun(opts util.Options) (err error) {
 
 	handler := &Handler{
 		emitter: emt,
-		output: newOutput(opts, emt),
+		output:  newOutput(opts, emt),
 	}
 
 	sig := &SignalSource{
@@ -526,11 +525,11 @@ func TestRun(opts util.Options) (err error) {
 			fcs := &FileChangeSource{
 				Patterns: strings.Split(cfg.Pattern, " "),
 			}
-			fcs.id = cfg.Name
+			fcs.id = cfg.Name + "-src"
 			source = fcs
 		} else {
 			os := &OnceSource{}
-			os.id = cfg.Name
+			os.id = cfg.Name + "-src"
 			source = os
 		}
 
@@ -547,6 +546,8 @@ func TestRun(opts util.Options) (err error) {
 		}
 	}
 
+	handler.output.Start()
+
 	// tb := &TerminateBlocker{}
 	// tb.Wait(e)
 	WaitOnInput()
@@ -554,6 +555,6 @@ func TestRun(opts util.Options) (err error) {
 	handler.Terminate()
 
 	// TODO there must be enough time to kill all the goroutines
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 500)
 	return
 }
