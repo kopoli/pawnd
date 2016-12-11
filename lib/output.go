@@ -80,6 +80,7 @@ type output struct {
 	Prefixer *PrefixedWriter
 	outputs  []*outputStatus
 
+	cmdOutputCount int
 	firstIteration bool
 
 	drawTicker *time.Ticker
@@ -146,7 +147,14 @@ func (o *output) update() {
 	tmp := &bytes.Buffer{}
 
 	if !o.firstIteration {
-		fmt.Fprintf(tmp, "%s", cursor.MoveUp(len(o.outputs)-1))
+		fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
+	} else {
+		o.cmdOutputCount = 0
+		for _, os := range o.outputs {
+			if strings.HasSuffix(os.ID, "-cmd") {
+				o.cmdOutputCount += 1
+			}
+		}
 	}
 
 	for _, os := range o.outputs {
@@ -154,7 +162,7 @@ func (o *output) update() {
 			continue
 		}
 
-		fmt.Fprintf(tmp, "%s", cursor.ClearLineLeft())
+		fmt.Fprintf(tmp, "%s", cursor.ClearEntireLine())
 		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(1) + cursor.ClearLineLeft())
 		drawProgress(os, o.width, tmp)
 	}
