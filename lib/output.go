@@ -95,7 +95,7 @@ func newOutput(opts util.Options, emt Emitter) (ret *output) {
 		out:       colorable.NewColorableStdout(),
 		Prefixer:  NewPrefixedWriter("", "", nil),
 		emt:       emt,
-		width:     80,
+		width:     40,
 		terminate: make(chan bool),
 	}
 
@@ -139,7 +139,15 @@ func drawProgress(os *outputStatus, maxwidth int, out *bytes.Buffer) {
 	} else {
 		out.WriteByte(spinner[(os.Progress*-1)%len(spinner)])
 	}
-	out.WriteByte('\n')
+}
+
+func clearLine(out io.Writer) {
+	line := make([]byte, 62)
+
+	for n := range line {
+		line[n] = ' '
+	}
+	fmt.Fprintf(out, "\r%s\r", line)
 }
 
 func (o *output) update() {
@@ -147,7 +155,7 @@ func (o *output) update() {
 	tmp := &bytes.Buffer{}
 
 	if !o.firstIteration {
-		fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
+		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
 	} else {
 		o.cmdOutputCount = 0
 		for _, os := range o.outputs {
@@ -162,9 +170,12 @@ func (o *output) update() {
 			continue
 		}
 
-		fmt.Fprintf(tmp, "%s", cursor.ClearEntireLine())
-		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(1) + cursor.ClearLineLeft())
+		// fmt.Fprintf(tmp, "%s\r", cursor.ClearEntireLine())
+		fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount + 1))
+		clearLine(tmp)
 		drawProgress(os, o.width, tmp)
+		fmt.Fprintf(tmp, "\n")
+		// fmt.Fprintf(tmp, "%s\n", cursor.MoveUp(o.cmdOutputCount + 1) + cursor.ClearLineRight())
 	}
 
 	tmp.WriteTo(o.out)
@@ -266,6 +277,34 @@ func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 
 /////////////////////////////////////////////////////////////
 
+func UiDemo(opts util.Options) {
+
+	emt := &emitter{}
+
+	o := newOutput(opts, emt)
+	n := node{
+		id: "Dips-cmd",
+		e:  emt,
+	}
+
+	o.Register(&n)
+
+	pos := 1
+	for {
+		pos = ((pos - 1) % 15)
+		o.outputs[0].Status = "Something"
+		o.outputs[0].Progress = pos
+
+		o.update()
+
+		<-time.After(500 * time.Millisecond)
+		// WaitOnInput()
+		// fmt.Println("JEJE!", pos)
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
 func uiliveTest() {
 	wr := uilive.New()
 	wr.Start()
@@ -277,7 +316,7 @@ func uiliveTest() {
 	wr.Stop()
 }
 
-func UiDemo(opts util.Options) {
+func UiDemo2(opts util.Options) {
 
 	line := &bytes.Buffer{}
 
