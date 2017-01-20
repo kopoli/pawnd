@@ -73,7 +73,8 @@ type outputStatus struct {
 type output struct {
 	out io.Writer
 	// err io.Writer
-	emt Emitter
+	traceOut *bytes.Buffer
+	emt      Emitter
 
 	width int
 
@@ -93,13 +94,14 @@ type output struct {
 func newOutput(opts util.Options, emt Emitter) (ret *output) {
 	ret = &output{
 		out:       colorable.NewColorableStdout(),
+		traceOut:  &bytes.Buffer{},
 		Prefixer:  NewPrefixedWriter("", "", nil),
 		emt:       emt,
 		width:     40,
 		terminate: make(chan bool),
 	}
 
-	ret.Prefixer.Out = ret.out
+	ret.Prefixer.Out = ret.traceOut
 
 	return
 }
@@ -141,22 +143,11 @@ func drawProgress(os *outputStatus, maxwidth int, out *bytes.Buffer) {
 	}
 }
 
-func clearLine(out io.Writer) {
-	// line := make([]byte, 62)
-
-	// for n := range line {
-	// 	line[n] = ' '
-	// }
-	// fmt.Fprintf(out, "%s\r", line)
-        fmt.Fprintf(out, "\r%s", cursor.ClearEntireLine())
-}
-
 func (o *output) update() {
 	o.updateLock.Lock()
 	tmp := &bytes.Buffer{}
 
 	if o.firstIteration {
-		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
 		o.cmdOutputCount = 0
 		for _, os := range o.outputs {
 			if strings.HasSuffix(os.ID, "-cmd") {
@@ -166,18 +157,30 @@ func (o *output) update() {
 		}
 	}
 
-	fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
+	for _, os := range o.outputs {
+		if !strings.HasSuffix(os.ID, "-cmd") {
+			continue
+		}
+		fmt.Fprintf(tmp, "%s%s\r", cursor.MoveUp(1),
+			cursor.ClearEntireLine())
+	}
+
+	trace := o.traceOut.Bytes()
+	if len(trace) > 0 {
+		if trace[len(trace)-1] != '\n' {
+			o.traceOut.WriteByte('\n')
+		}
+
+		o.traceOut.WriteTo(tmp)
+	}
 
 	for _, os := range o.outputs {
 		if !strings.HasSuffix(os.ID, "-cmd") {
 			continue
 		}
 
-		// fmt.Fprintf(tmp, "%s\r", cursor.ClearEntireLine())
-		clearLine(tmp)
 		drawProgress(os, o.width, tmp)
-		fmt.Fprintf(tmp, "\n")
-		// fmt.Fprintf(tmp, "%s\n", cursor.MoveUp(o.cmdOutputCount + 1) + cursor.ClearLineRight())
+		tmp.WriteByte('\n')
 	}
 
 	tmp.WriteTo(o.out)
@@ -295,10 +298,10 @@ func UiDemo(opts util.Options) {
 		e:  emt,
 	})
 
-        // TODO DEBUG
+	// TODO DEBUG
 	o.firstIteration = true
 
-	pos := 0
+	pos := 8
 	for {
 		pos = ((pos + 1) % 10)
 
@@ -312,7 +315,7 @@ func UiDemo(opts util.Options) {
 
 		<-time.After(500 * time.Millisecond)
 		// WaitOnInput()
-		// fmt.Println("JEJE!", pos)
+		fmt.Fprintln(o.outputs[0].Err, "JEJE!\ndips")
 	}
 }
 
