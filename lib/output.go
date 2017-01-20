@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -147,7 +148,7 @@ func clearLine(out io.Writer) {
 	for n := range line {
 		line[n] = ' '
 	}
-	fmt.Fprintf(out, "\r%s\r", line)
+	fmt.Fprintf(out, "%s\r", line)
 }
 
 func (o *output) update() {
@@ -161,9 +162,16 @@ func (o *output) update() {
 		for _, os := range o.outputs {
 			if strings.HasSuffix(os.ID, "-cmd") {
 				o.cmdOutputCount += 1
+				tmp.WriteByte('\n')
 			}
 		}
 	}
+
+	fmt.Println("Outputteja", o.cmdOutputCount)
+
+	os.Exit(0)
+
+	fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount+1))
 
 	for _, os := range o.outputs {
 		if !strings.HasSuffix(os.ID, "-cmd") {
@@ -171,7 +179,6 @@ func (o *output) update() {
 		}
 
 		// fmt.Fprintf(tmp, "%s\r", cursor.ClearEntireLine())
-		fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount + 1))
 		clearLine(tmp)
 		drawProgress(os, o.width, tmp)
 		fmt.Fprintf(tmp, "\n")
@@ -288,12 +295,20 @@ func UiDemo(opts util.Options) {
 	}
 
 	o.Register(&n)
+	o.Register(&node{
+		id: "Kakonen-cmd",
+		e:  emt,
+	})
 
-	pos := 1
+	pos := 0
 	for {
-		pos = ((pos - 1) % 15)
+		pos = ((pos + 1) % 10)
+
 		o.outputs[0].Status = "Something"
-		o.outputs[0].Progress = pos
+		o.outputs[0].Progress = -pos
+
+		o.outputs[1].Status = "Else"
+		o.outputs[1].Progress = pos * 10
 
 		o.update()
 
