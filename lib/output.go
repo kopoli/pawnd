@@ -129,10 +129,14 @@ func drawProgress(os *outputStatus, maxwidth int, out *bytes.Buffer) {
 	if os.Progress >= 0 {
 		out.WriteByte('[')
 		fillwidth := maxwidth * os.Progress / 100
-		for i := 0; i < fillwidth-1; i++ {
-			out.WriteByte('=')
-		}
-		out.WriteByte('>')
+                if os.Progress > 0 {
+                        for i := 0; i < fillwidth-1; i++ {
+                                out.WriteByte('=')
+                        }
+                        if os.Progress < 100 {
+                                out.WriteByte('>')
+                        }
+                }
 
 		for i := 0; i < maxwidth-fillwidth; i++ {
 			out.WriteByte('-')
@@ -188,8 +192,19 @@ func (o *output) update() {
 	o.updateLock.Unlock()
 }
 
+func (o *output) animate() {
+	for _, os := range o.outputs {
+                if os.Progress < 0 {
+                        os.Progress = -((-os.Progress + 1) % (len(spinner) + 1))
+                        if os.Progress == 0 {
+                                os.Progress = -1
+                        }
+                }
+        }
+}
+
 func (o *output) Start() (err error) {
-	o.drawTicker = time.NewTicker(time.Millisecond * 1000)
+	o.drawTicker = time.NewTicker(time.Millisecond * 2000)
 	o.firstIteration = true
 
 	go func() {
@@ -197,6 +212,7 @@ func (o *output) Start() (err error) {
 		for {
 			select {
 			case <-o.drawTicker.C:
+                                o.animate()
 				o.update()
 			case <-o.terminate:
 				o.drawTicker.Stop()
@@ -219,7 +235,8 @@ func (o *output) Register(node Node) (err error) {
 			ID:  node.ID() + "-err",
 			out: o,
 		},
-		Progress: 45,
+		Progress: 0,
+                Status: "WAIT",
 	}
 	o.outputs = append(o.outputs, os)
 
@@ -227,12 +244,56 @@ func (o *output) Register(node Node) (err error) {
 	return
 }
 
+func (o *output) getStatus(ID string) (*outputStatus) {
+        for i := range o.outputs {
+                if o.outputs[i].ID == ID {
+                        return o.outputs[i]
+                }
+        }
+        return nil
+}
+
+func (o *output) InterpretID(ID string) {
+        suffices := []string{ "-start", "-fail", "-success", "-kill"}
+        pos := 0
+
+        for pos = 0; pos < len(suffices) && !strings.HasSuffix(ID, suffices[pos]); pos ++ {
+        }
+
+        if pos == len(suffices) {
+                return
+        }
+
+        os := o.getStatus(strings.TrimSuffix(ID, suffices[pos]))
+	// fmt.Fprintln(o.Prefixer, "ZAZAZA outputstatus on:", os, "ja", strings.TrimSuffix(ID, suffices[pos]))
+        if os == nil {
+                return
+        }
+
+        switch suffices[pos] {
+        case "-start":
+                os.Status = "RUN "
+                os.Progress = -1
+        case "-fail":
+                os.Status = "FAIL"
+                os.Progress = 0
+        case "-success":
+                os.Status = "SUCC"
+                os.Progress = 100
+        case "-kill":
+                os.Status = "KILL"
+                os.Progress = 0
+        }
+}
+
 func (o *output) Run(ID string) (err error) {
-	fmt.Fprintln(o.out, "Output received trigger on:", ID)
+	fmt.Fprintln(o.Prefixer, "Output received trigger on:", ID)
 
 	switch ID {
 	case TRIGTERM:
 		o.terminate <- true
+        default:
+                o.InterpretID(ID)
 	}
 	return
 }
