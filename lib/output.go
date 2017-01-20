@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -143,21 +142,21 @@ func drawProgress(os *outputStatus, maxwidth int, out *bytes.Buffer) {
 }
 
 func clearLine(out io.Writer) {
-	line := make([]byte, 62)
+	// line := make([]byte, 62)
 
-	for n := range line {
-		line[n] = ' '
-	}
-	fmt.Fprintf(out, "%s\r", line)
+	// for n := range line {
+	// 	line[n] = ' '
+	// }
+	// fmt.Fprintf(out, "%s\r", line)
+        fmt.Fprintf(out, "\r%s", cursor.ClearEntireLine())
 }
 
 func (o *output) update() {
 	o.updateLock.Lock()
 	tmp := &bytes.Buffer{}
 
-	if !o.firstIteration {
+	if o.firstIteration {
 		// fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
-	} else {
 		o.cmdOutputCount = 0
 		for _, os := range o.outputs {
 			if strings.HasSuffix(os.ID, "-cmd") {
@@ -167,11 +166,7 @@ func (o *output) update() {
 		}
 	}
 
-	fmt.Println("Outputteja", o.cmdOutputCount)
-
-	os.Exit(0)
-
-	fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount+1))
+	fmt.Fprintf(tmp, "%s", cursor.MoveUp(o.cmdOutputCount))
 
 	for _, os := range o.outputs {
 		if !strings.HasSuffix(os.ID, "-cmd") {
@@ -299,6 +294,9 @@ func UiDemo(opts util.Options) {
 		id: "Kakonen-cmd",
 		e:  emt,
 	})
+
+        // TODO DEBUG
+	o.firstIteration = true
 
 	pos := 0
 	for {
