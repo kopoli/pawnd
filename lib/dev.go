@@ -333,6 +333,12 @@ func (s *FileChangeSource) Start() (err error) {
 
 	// Match non-recursive parts of the patterns against the given file
 	matchPattern := func(file string) bool {
+
+		// check if a dangling symlink
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return false
+		}
+
 		file = filepath.Base(file)
 		for _, p := range s.Patterns {
 			m, er := path.Match(filepath.Base(p), file)
