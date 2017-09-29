@@ -1,9 +1,6 @@
 package pawnd
 
 import (
-	"fmt"
-	"runtime"
-
 	cli "github.com/jawher/mow.cli"
 
 	"github.com/kopoli/go-util"
@@ -11,15 +8,12 @@ import (
 
 func Cli(opts util.Options, argsin []string) (args []string, err error) {
 	progName := opts.Get("program-name", "pawnd")
-	progVersion := opts.Get("program-version", "undefined")
 
 	app := cli.App(progName, "For running errands and general minioning")
 
 	app.Spec = "[OPTIONS]"
 
-	app.Version("version v", fmt.Sprintf("%s: %s\nBuilt with: %s/%s on %s/%s",
-		progName, progVersion, runtime.Compiler, runtime.Version(),
-		runtime.GOOS, runtime.GOARCH))
+	app.Version("version v", util.VersionString(opts))
 
 	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", "pawnd.conf"),
 		"File to read the configuration from.")
