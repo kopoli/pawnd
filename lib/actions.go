@@ -59,24 +59,14 @@ type BaseAction struct {
 	bus  *EventBus
 }
 
-// func (a *BaseAction) Receive(from, message string) {
-// 	fmt.Println("Base functionality !!")
-// }
-
-func (a *BaseAction) Send(to, message string) {
-	a.bus.Send(a.name, to, message)
-}
-
 func (a *BaseAction) Identify(name string, eb *EventBus) {
 	a.name = name
 	a.bus = eb
 }
 
-// func RegisterAction(eb *EventBus, name string, a *BaseAction) error {
-// 	a.name = name
-// 	a.bus = eb
-// 	return eb.Register(name, a)
-// }
+func (a *BaseAction) Send(to, message string) {
+	a.bus.Send(a.name, to, message)
+}
 
 type InitAction struct {
 	triggerName string
@@ -128,6 +118,7 @@ func (a *ExecAction) Receive(from, message string) {
 		if a.Succeeded != "" {
 			a.Send(a.Succeeded, MsgTrig)
 		}
+		a.Send(ToOutput, a.name + "-ok")
 	case MsgTerm:
 		fmt.Println("Terminating command!")
 	}
@@ -148,6 +139,6 @@ func ActionDemo(opts util.Options) {
 
 	time.Sleep(1 * time.Second)
 
-	eb.Send("jeje", "a", MsgTerm)
+	eb.Send("jeje", "*", MsgTerm)
 	time.Sleep(1 * time.Second)
 }

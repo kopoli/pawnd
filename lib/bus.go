@@ -3,6 +3,7 @@ package pawnd
 import (
 	"fmt"
 	"sync"
+	"github.com/ryanuber/go-glob"
 )
 
 /*
@@ -33,45 +34,26 @@ type EventBus struct {
 	mutex   sync.Mutex
 }
 
-// Interface that is registered to an EventBus
-// type Listener interface {
-// }
-
 // BusLink is the interface for sending messages to the bus
 type BusLink interface {
+	// Receiving messages
 	Receive(from, message string)
+
+	// Sending messages
 	Send(to, message string)
+
+	// Registering the EventBus to the BusLink
 	Identify(name string, bus *EventBus)
 }
-
-// link is the internal representation of the link to the EventBus
-// type link struct {
-// 	name     string
-// 	bus      *EventBus
-// 	listener Listener
-// }
-
-// func (l *link) Send(to, message string) {
-// 	l.bus.Send(l.name, to, message)
-// }
 
 // Register a node with given name
 func (eb *EventBus) Register(name string, link BusLink) error {
 	eb.mutex.Lock()
-
-
-	// eb.links[name] = &link{
-	// 	name:     name,
-	// 	bus:      eb,
-	// 	listener: listener,
-	// }
 	eb.links[name] = link
-
 	eb.mutex.Unlock()
 
 	link.Identify(name, eb)
 
-	// return eb.links[name], nil
 	return nil
 }
 
@@ -98,8 +80,10 @@ func NewEventBus() *EventBus {
 			select {
 			case msg := <-ret.msgchan:
 				ret.mutex.Lock()
-				if val, ok := ret.links[msg.To]; ok {
-					go val.Receive(msg.From, msg.Contents)
+				for k := range ret.links {
+					if glob.Glob(msg.To, k) {
+						go ret.links[k].Receive(msg.From, msg.Contents)
+					}
 				}
 				ret.mutex.Unlock()
 			}
