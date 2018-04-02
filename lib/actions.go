@@ -47,26 +47,36 @@ succeeded=build
 
 [build]
 exec=go build
-succeeded=daemon
+succeeded=handledaemon
 
-[daemon]
+[handledaemon]
 daemon=./daemond --foreground
 
 */
 
 type BaseAction struct {
-	Link BusLink
+	name string
+	bus  *EventBus
 }
 
-func (a *BaseAction) Receive(from, message string) {
-	fmt.Println("Base functionality !!")
+// func (a *BaseAction) Receive(from, message string) {
+// 	fmt.Println("Base functionality !!")
+// }
+
+func (a *BaseAction) Send(to, message string) {
+	a.bus.Send(a.name, to, message)
 }
 
-func (a *BaseAction) Register(eb *EventBus, name string) error {
-	var err error
-	a.Link, err = eb.Register(name, a)
-	return err
+func (a *BaseAction) Identify(name string, eb *EventBus) {
+	a.name = name
+	a.bus = eb
 }
+
+// func RegisterAction(eb *EventBus, name string, a *BaseAction) error {
+// 	a.name = name
+// 	a.bus = eb
+// 	return eb.Register(name, a)
+// }
 
 type InitAction struct {
 	triggerName string
@@ -80,9 +90,10 @@ func NewInitAction(triggerName string) (*InitAction, error) {
 }
 
 func (a *InitAction) Receive(from, message string) {
+	fmt.Println("From", from, "msg", message)
 	switch message {
 	case MsgInit:
-		a.Link.Send(a.triggerName, MsgTrig)
+		a.Send(a.triggerName, MsgTrig)
 	}
 }
 
@@ -96,6 +107,8 @@ func (a *InitAction) Receive(from, message string) {
 type ExecAction struct {
 	Args []string
 
+	Succeeded string
+
 	BaseAction
 }
 
@@ -106,9 +119,15 @@ func NewExecAction(args ...string) (*ExecAction, error) {
 }
 
 func (a *ExecAction) Receive(from, message string) {
+	fmt.Println("Execaction", from, message)
 	switch message {
 	case MsgTrig:
 		fmt.Println("Running command:", a.Args)
+
+		// After succeeding
+		if a.Succeeded != "" {
+			a.Send(a.Succeeded, MsgTrig)
+		}
 	case MsgTerm:
 		fmt.Println("Terminating command!")
 	}
@@ -118,12 +137,17 @@ func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
 
 	ia, _ := NewInitAction("a")
-	ia.Register(eb, "initer")
+	eb.Register("initer", ia)
 	ea, _ := NewExecAction("ls")
-
-	ea.Register(eb, "a")
+	eb.Register("a", ea)
+	ea.Succeeded = "b"
+	es, _ := NewExecAction("Second", "command")
+	eb.Register("b", es)
 
 	eb.Send("jeje", "initer", MsgInit)
 
+	time.Sleep(1 * time.Second)
+
+	eb.Send("jeje", "a", MsgTerm)
 	time.Sleep(1 * time.Second)
 }
