@@ -3,6 +3,7 @@ package pawnd
 import (
 	"fmt"
 	"sync"
+
 	"github.com/ryanuber/go-glob"
 )
 
@@ -32,6 +33,7 @@ type EventBus struct {
 	links   map[string]BusLink
 	msgchan chan Message
 	mutex   sync.Mutex
+	wg      sync.WaitGroup
 }
 
 // BusLink is the interface for sending messages to the bus
@@ -69,6 +71,16 @@ func (eb *EventBus) Send(from, to, message string) {
 	eb.msgchan <- Message{from, to, message}
 }
 
+// Run until terminated
+func (eb *EventBus) Run() {
+	eb.wg.Wait()
+}
+
+// // Terminate sends MsgTerm to all links and waits for all the handlers to return
+// func (eb *EventBus) Terminate() {
+// 	// TODO
+// }
+
 func NewEventBus() *EventBus {
 	var ret = EventBus{
 		links:   make(map[string]BusLink),
@@ -76,18 +88,32 @@ func NewEventBus() *EventBus {
 	}
 
 	go func() {
+		ret.wg.Add(1)
+	loop:
 		for {
 			select {
 			case msg := <-ret.msgchan:
 				ret.mutex.Lock()
-				for k := range ret.links {
-					if glob.Glob(msg.To, k) {
-						go ret.links[k].Receive(msg.From, msg.Contents)
+				if msg.Contents != MsgTerm {
+					for k := range ret.links {
+						if glob.Glob(msg.To, k) {
+							go ret.links[k].Receive(msg.From, msg.Contents)
+						}
+					}
+				} else {
+					for k := range ret.links {
+						if glob.Glob(msg.To, k) {
+							ret.links[k].Receive(msg.From, msg.Contents)
+						}
 					}
 				}
 				ret.mutex.Unlock()
+				if msg.Contents == MsgTerm {
+					break loop
+				}
 			}
 		}
+		ret.wg.Done()
 	}()
 
 	return &ret

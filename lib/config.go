@@ -2,6 +2,8 @@ package pawnd
 
 import (
 	"fmt"
+	"strings"
+	"unicode"
 
 	util "github.com/kopoli/go-util"
 	"gopkg.in/ini.v1"
@@ -63,3 +65,82 @@ type cfg struct {
 
 // 	return
 // }
+
+// splitWsQuote splits a string by whitespace, but takes doublequotes into
+// account
+func splitWsQuote(s string) []string {
+
+	quote := rune(0)
+
+	return strings.FieldsFunc(s, func(r rune) bool {
+		switch {
+		case r == quote:
+			quote = rune(0)
+			return true
+		case quote != rune(0):
+			return false
+		case unicode.In(r, unicode.Quotation_Mark):
+			quote = r
+			return true
+		default:
+			return unicode.IsSpace(r)
+		}
+	})
+}
+
+func ValidateConfig(filename string) (*ini.File, error) {
+	fp, err := ini.LoadSources(ini.LoadOptions{AllowShadows: true}, filename)
+	if err != nil {
+		err = util.E.Annotate(err, "Could not load configuration")
+		return nil, err
+	}
+
+	for _, sect := range fp.Sections() {
+		if sect.Name() == ini.DEFAULT_SECTION {
+			continue
+		}
+
+		if len(sect.ChildSections()) != 0 {
+			err = util.E.New("No child sections supported")
+			goto fail
+		}
+	}
+
+	return fp, nil
+
+fail:
+	return nil, err
+}
+
+func CreateActions(file *ini.File, bus *EventBus) error {
+
+	for _, sect := range file.Sections() {
+		if sect.Name() == ini.DEFAULT_SECTION {
+			k, err := sect.GetKey("init")
+			if err == nil {
+				for i, v := range k.ValueWithShadows() {
+					a := NewInitAction(fmt.Sprintf("act:%s", v))
+					bus.Register(fmt.Sprintf("init:%d", i), a)
+				}
+			}
+			continue
+		}
+		if sect.HasKey("exec") || sect.HasKey("daemon") {
+			keyname := "exec"
+			daemon := false
+			if sect.HasKey("daemon") {
+				daemon = true
+				keyname = "daemon"
+			}
+			key := sect.Key(keyname)
+			a := NewExecAction(splitWsQuote(key.String())...)
+			a.Daemon = daemon
+			a.Succeeded = sect.Key("succeeded").String()
+			a.Failed = sect.Key("failed").String()
+
+			bus.Register(fmt.Sprintf("act:%s", sect.Name()), a)
+		}
+	}
+
+	return nil
+}
