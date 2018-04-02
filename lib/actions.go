@@ -3,7 +3,9 @@ package pawnd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"sync"
 	"time"
 
 	util "github.com/kopoli/go-util"
@@ -141,6 +143,9 @@ type ExecAction struct {
 	Succeeded string
 	Failed    string
 
+	cmd *exec.Cmd
+	wg  sync.WaitGroup
+
 	BaseAction
 }
 
@@ -149,19 +154,56 @@ func NewExecAction(args ...string) *ExecAction {
 
 }
 
+func (a *ExecAction) Run() error {
+	a.wg.Add(1)
+	defer a.wg.Done()
+
+	a.cmd = exec.Command(a.Args[0], a.Args[1:]...)
+	a.cmd.Stdout = os.Stdout
+	a.cmd.Stderr = os.Stderr
+	err := a.cmd.Start()
+	if err != nil {
+		a.cmd = nil
+		fmt.Println("Starting command failed:", err)
+		return err
+	}
+
+	err = a.cmd.Wait()
+	if err != nil {
+		if a.Succeeded != "" {
+			a.Send(a.Succeeded, MsgTrig)
+		}
+		a.Send(ToOutput, a.name+"-ok")
+	} else {
+		if a.Failed != "" {
+			a.Send(a.Failed, MsgTrig)
+		}
+		a.Send(ToOutput, a.name+"-fail")
+	}
+	a.cmd = nil
+	return err
+}
+
+func (a *ExecAction) Kill() error {
+	if a.cmd != nil && a.cmd.Process != nil {
+		return a.cmd.Process.Kill()
+	}
+	return nil
+}
+
 func (a *ExecAction) Receive(from, message string) {
 	fmt.Println("Execaction", from, message)
 	switch message {
 	case MsgTrig:
 		fmt.Println("Running command:", a.Args)
-
-		// After succeeding
-		if a.Succeeded != "" {
-			a.Send(a.Succeeded, MsgTrig)
+		if a.Daemon {
+			_ = a.Kill()
 		}
-		a.Send(ToOutput, a.name+"-ok")
+		a.wg.Wait()
+		a.Run()
 	case MsgTerm:
 		fmt.Println("Terminating command!")
+		a.Kill()
 	}
 }
 
@@ -181,7 +223,6 @@ func ActionDemo(opts util.Options) {
 
 	eb.Send("", ToAll, MsgInit)
 
-	// time.Sleep(1 * time.Second)
 	eb.Run()
 }
 
