@@ -374,7 +374,7 @@ func UiDemo(opts util.Options) {
 
 		o.update()
 
-		<-time.After(500 * time.Millisecond)
+		<-time.After(1000 * time.Millisecond)
 		// WaitOnInput()
 		fmt.Fprintln(o.outputs[0].Err, "JEJE!\ndips")
 	}

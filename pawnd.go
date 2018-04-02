@@ -54,7 +54,8 @@ func main() {
 	}
 
 	if opts.IsSet("demo-mode") {
-		pawnd.UiDemo(opts)
+		pawnd.ActionDemo(opts)
+		// pawnd.UiDemo(opts)
 		exitValue = 25
 		return
 	}
