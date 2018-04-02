@@ -119,7 +119,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			k, err := sect.GetKey("init")
 			if err == nil {
 				for i, v := range k.ValueWithShadows() {
-					a := NewInitAction(fmt.Sprintf("act:%s", v))
+					a := NewInitAction(ActionName(v))
 					bus.Register(fmt.Sprintf("init:%d", i), a)
 				}
 			}
@@ -138,7 +138,14 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a.Succeeded = sect.Key("succeeded").String()
 			a.Failed = sect.Key("failed").String()
 
-			bus.Register(fmt.Sprintf("act:%s", sect.Name()), a)
+			bus.Register(ActionName(sect.Name()), a)
+		} else if sect.HasKey("file") {
+			key := sect.Key("file")
+			a, err := NewFileAction(splitWsQuote(key.String())...)
+			if err == nil {
+				a.Changed = sect.Key("changed").String()
+				bus.Register(ActionName(sect.Name()), a)
+			}
 		}
 	}
 

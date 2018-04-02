@@ -5,10 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"sync"
 	"time"
 
 	util "github.com/kopoli/go-util"
+	fsnotify "gopkg.in/fsnotify.v1"
 )
 
 /*
@@ -58,6 +61,10 @@ daemon=./daemond --foreground
 
 */
 
+func ActionName(name string) string {
+	return fmt.Sprintf("act:%s", name)
+}
+
 type BaseAction struct {
 	name string
 	bus  *EventBus
@@ -91,12 +98,109 @@ func (a *InitAction) Receive(from, message string) {
 	}
 }
 
-// type FileAction struct {
-// }
+///
 
-// func NewFileAction() (*FileAction, error) {
+type FileAction struct {
+	Patterns   []string
+	Hysteresis time.Duration
 
-// }
+	Changed string
+
+	triggerName string
+	termchan    chan bool
+	watch       *fsnotify.Watcher
+
+	BaseAction
+}
+
+func NewFileAction(patterns ...string) (*FileAction, error) {
+
+	var ret = FileAction{
+		Patterns:    patterns,
+		Hysteresis:  500 * time.Millisecond,
+		termchan:    make(chan bool),
+	}
+
+	var err error
+	ret.watch, err = fsnotify.NewWatcher()
+	if err != nil {
+		util.E.Annotate(err, "Could not create a new watcher")
+		return nil, err
+	}
+
+	stopTimer := func(t *time.Timer) {
+		if !t.Stop() {
+			select {
+			case <-t.C:
+			default:
+			}
+		}
+	}
+
+	matchPattern := func(file string) bool {
+
+		// check if a dangling symlink
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return false
+		}
+
+		file = filepath.Base(file)
+		for _, p := range ret.Patterns {
+			m, er := path.Match(filepath.Base(p), file)
+			if m && er == nil {
+				return true
+			}
+		}
+		return false
+	}
+
+	go func() {
+		defer ret.watch.Close()
+
+		threshold := time.NewTimer(0)
+		stopTimer(threshold)
+
+		fmt.Println("Patterns on", ret.Patterns)
+		files := getFileList(ret.Patterns)
+		if len(files) == 0 {
+			fmt.Println("Error: No watched files")
+		}
+		for i := range files {
+			err := ret.watch.Add(files[i])
+			if err != nil {
+				fmt.Println("Error: Could not watch", files[i])
+			}
+		}
+
+	loop:
+		for {
+			select {
+			case <-threshold.C:
+				if ret.Changed != "" {
+					ret.Send(ActionName(ret.Changed), MsgTrig)
+				}
+			case event := <-ret.watch.Events:
+				if matchPattern(event.Name) {
+					stopTimer(threshold)
+					threshold.Reset(ret.Hysteresis)
+				}
+			case err := <-ret.watch.Errors:
+				fmt.Println("Error Received:", err)
+			case <-ret.termchan:
+				break loop
+			}
+		}
+	}()
+
+	return &ret, err
+}
+
+func (a *FileAction) Receive(from, message string) {
+	switch message {
+	case MsgTerm:
+		a.termchan <- true
+	}
+}
 
 ///
 
@@ -169,14 +273,14 @@ func (a *ExecAction) Run() error {
 	}
 
 	err = a.cmd.Wait()
-	if err != nil {
+	if err == nil {
 		if a.Succeeded != "" {
-			a.Send(a.Succeeded, MsgTrig)
+			a.Send(ActionName(a.Succeeded), MsgTrig)
 		}
 		a.Send(ToOutput, a.name+"-ok")
 	} else {
 		if a.Failed != "" {
-			a.Send(a.Failed, MsgTrig)
+			a.Send(ActionName(a.Failed), MsgTrig)
 		}
 		a.Send(ToOutput, a.name+"-fail")
 	}
