@@ -20,30 +20,6 @@ import (
 
 /////////////////////////////////////////////////////////////
 
-// type outWriter struct {
-// 	ID   string
-// 	Next io.Writer
-
-// 	isBlocked bool
-// }
-
-// func (o *outWriter) Write(buf []byte) (n int, err error) {
-// 	return o.Next.Write(buf)
-// }
-
-// func newOutWriter(ID string, next io.Writer) (ret *outWriter) {
-// 	ret = &outWriter{
-// 		ID:        ID,
-// 		Next:      NewPrefixedWriter("["+ID+"] ", "", next),
-// 		isBlocked: false,
-// 	}
-// 	return
-// }
-
-// Caset:
-// 1. ei printata mitään paitsi jos komento feilaa. Sitten printataan koko hoito.
-// 2. Printataan koko ajan
-
 type Output interface {
 	Register(Node) error
 	Start() error
@@ -306,6 +282,7 @@ type PrefixedWriter struct {
 	Out    io.Writer
 }
 
+// TODO remove the style-argument
 func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWriter {
 	return &PrefixedWriter{
 		Prefix: []byte(prefix + ansi.ColorCode(style)),

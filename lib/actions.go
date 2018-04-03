@@ -68,6 +68,7 @@ func ActionName(name string) string {
 type BaseAction struct {
 	name string
 	bus  *EventBus
+	term Terminal
 }
 
 func (a *BaseAction) Identify(name string, eb *EventBus) {
@@ -79,6 +80,12 @@ func (a *BaseAction) Send(to, message string) {
 	a.bus.Send(a.name, to, message)
 }
 
+func (a *BaseAction) Terminal() Terminal {
+	if a.term == nil || a.term == GetTerminal("") {
+		a.term = GetTerminal(a.name)
+	}
+	return a.term
+}
 ///
 
 type InitAction struct {
@@ -162,13 +169,14 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 
 		fmt.Println("Patterns on", ret.Patterns)
 		files := getFileList(ret.Patterns)
+		stderr := ret.Terminal().Stderr()
 		if len(files) == 0 {
-			fmt.Println("Error: No watched files")
+			fmt.Fprintln(stderr,"Error: No watched files")
 		}
 		for i := range files {
 			err := ret.watch.Add(files[i])
 			if err != nil {
-				fmt.Println("Error: Could not watch", files[i])
+				fmt.Fprintln(stderr, "Error: Could not watch", files[i])
 			}
 		}
 
@@ -185,7 +193,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 					threshold.Reset(ret.Hysteresis)
 				}
 			case err := <-ret.watch.Errors:
-				fmt.Println("Error Received:", err)
+				fmt.Fprintln(ret.Terminal().Stderr(), "Error Received:", err)
 			case <-ret.termchan:
 				break loop
 			}
@@ -262,27 +270,32 @@ func (a *ExecAction) Run() error {
 	a.wg.Add(1)
 	defer a.wg.Done()
 
+	term := a.Terminal()
+
 	a.cmd = exec.Command(a.Args[0], a.Args[1:]...)
-	a.cmd.Stdout = os.Stdout
-	a.cmd.Stderr = os.Stderr
+	a.cmd.Stdout = term.Stdout()
+	a.cmd.Stderr = term.Stderr()
 	err := a.cmd.Start()
 	if err != nil {
 		a.cmd = nil
-		fmt.Println("Starting command failed:", err)
+		fmt.Fprintln(term.Stderr(),"Error: Starting command failed:", err)
 		return err
 	}
 
+	term.SetStatus("run")
 	err = a.cmd.Wait()
 	if err == nil {
 		if a.Succeeded != "" {
 			a.Send(ActionName(a.Succeeded), MsgTrig)
 		}
 		a.Send(ToOutput, a.name+"-ok")
+		term.SetStatus("ok")
 	} else {
 		if a.Failed != "" {
 			a.Send(ActionName(a.Failed), MsgTrig)
 		}
 		a.Send(ToOutput, a.name+"-fail")
+		term.SetStatus("fail")
 	}
 	a.cmd = nil
 	return err
@@ -299,20 +312,23 @@ func (a *ExecAction) Receive(from, message string) {
 	fmt.Println("Execaction", from, message)
 	switch message {
 	case MsgTrig:
-		fmt.Println("Running command:", a.Args)
+		fmt.Fprintln(a.Terminal().Stdout(),"Running command:", a.Args)
 		if a.Daemon {
 			_ = a.Kill()
 		}
 		a.wg.Wait()
 		a.Run()
 	case MsgTerm:
-		fmt.Println("Terminating command!")
+		fmt.Println(a.Terminal().Stdout(), "Terminating command!")
 		a.Kill()
 	}
 }
 
 func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
+
+	ta := NewTermAction()
+	eb.Register("output", ta)
 
 	sa := NewSignalAction(os.Interrupt)
 	eb.Register("sighandler", sa)
