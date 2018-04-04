@@ -89,7 +89,10 @@ func splitWsQuote(s string) []string {
 }
 
 func ValidateConfig(filename string) (*ini.File, error) {
-	fp, err := ini.LoadSources(ini.LoadOptions{AllowShadows: true}, filename)
+	fp, err := ini.LoadSources(ini.LoadOptions{
+		AllowBooleanKeys: true,
+		AllowShadows:     true,
+	}, filename)
 	if err != nil {
 		err = util.E.Annotate(err, "Could not load configuration")
 		return nil, err
@@ -118,9 +121,9 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 		if sect.Name() == ini.DEFAULT_SECTION {
 			k, err := sect.GetKey("init")
 			if err == nil {
-				for i, v := range k.ValueWithShadows() {
+				for _, v := range k.ValueWithShadows() {
 					a := NewInitAction(ActionName(v))
-					bus.Register(fmt.Sprintf("init:%d", i), a)
+					bus.Register(fmt.Sprintf("init:%s", ActionName(v)), a)
 				}
 			}
 			continue
@@ -139,6 +142,11 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a.Failed = sect.Key("failed").String()
 
 			bus.Register(ActionName(sect.Name()), a)
+
+			if sect.HasKey("init") {
+				a := NewInitAction(ActionName(sect.Name()))
+				bus.Register(fmt.Sprintf("init:%d", ActionName(sect.Name())), a)
+			}
 		} else if sect.HasKey("file") {
 			key := sect.Key("file")
 			a, err := NewFileAction(splitWsQuote(key.String())...)
