@@ -12,6 +12,8 @@ import (
 	"github.com/mgutz/ansi"
 )
 
+var spinner = `-/|\`
+
 // Terminal output handling
 
 // termWriter protects the single output buffer in TermAction. It also

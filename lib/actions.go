@@ -12,6 +12,7 @@ import (
 	"time"
 
 	util "github.com/kopoli/go-util"
+	zglob "github.com/mattn/go-zglob"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
@@ -125,6 +126,42 @@ type FileAction struct {
 	BaseAction
 }
 
+// Remove duplicate strings from the list
+func uniqStr(in []string) (out []string) {
+	set := make(map[string]bool, len(in))
+
+	for _, item := range in {
+		set[item] = true
+	}
+	out = make([]string, len(set))
+	for item := range set {
+		out = append(out, item)
+		// fmt.Println("item:[", item, "]")
+	}
+	return
+}
+
+// Get the list of files represented by the given list of glob patterns
+func getFileList(patterns []string) (ret []string) {
+	for _, pattern := range patterns {
+		// Recursive globbing support
+		m, err := zglob.Glob(pattern)
+		if err != nil {
+			continue
+		}
+
+		ret = append(ret, m...)
+	}
+
+	for _, path := range ret {
+		ret = append(ret, filepath.Dir(path))
+	}
+
+	ret = uniqStr(ret)
+
+	return
+}
+
 func NewFileAction(patterns ...string) (*FileAction, error) {
 
 	var ret = FileAction{
@@ -173,7 +210,6 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 		threshold := time.NewTimer(0)
 		stopTimer(threshold)
 
-		fmt.Println("Patterns on", ret.Patterns)
 		files := getFileList(ret.Patterns)
 		stderr := ret.Terminal().Stderr()
 		if len(files) == 0 {
