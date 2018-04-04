@@ -271,7 +271,7 @@ type terminal struct {
 
 //
 func RegisterTerminal(name string, visible bool) Terminal {
-	prefix := fmt.Sprintf("[%s] ", name)
+	prefix := fmt.Sprintf("[%s%s%s] ", ansi.ColorCode("default+hb"), name, ansi.Reset)
 	var ret = terminal{
 		Name:    name,
 		Visible: visible,
@@ -320,6 +320,7 @@ type PrefixedWriter struct {
 	Prefix []byte
 	Eol    []byte
 	Out    io.Writer
+	TimeStamp bool
 	buf    *bytes.Buffer
 }
 
@@ -328,6 +329,7 @@ func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWrit
 		Prefix: []byte(prefix + ansi.ColorCode(style)),
 		Eol:    []byte("" + ansi.Reset + "\n"),
 		Out:    out,
+		TimeStamp: true,
 		buf:    &bytes.Buffer{},
 	}
 }
@@ -345,11 +347,17 @@ func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 
 	n = len(buf)
 
+	stamp := ""
+	if p.TimeStamp {
+		stamp = time.Now().Format("Jan _2 15:04:05.000: ")
+	}
+
 	// If only one line to write without newline
 	lastLineIdx := bytes.LastIndexByte(buf, '\n')
 	if lastLineIdx < 0 {
 		// If there is nothing in the buffer
 		if p.buf.Len() == 0 {
+			p.buf.WriteString(stamp)
 			p.buf.Write(p.Prefix)
 		}
 
@@ -370,6 +378,7 @@ func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 	for i := range lines {
 		// If either not first line or first and nothing in buffer
 		if i > 0 || (i == 0 && p.buf.Len() == 0) {
+			p.buf.WriteString(stamp)
 			p.buf.Write(p.Prefix)
 		}
 
