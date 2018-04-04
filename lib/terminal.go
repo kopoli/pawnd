@@ -246,3 +246,168 @@ func (t *terminal) Verbose() io.Writer {
 func (t *terminal) SetStatus(status string) {
 	t.Status = status
 }
+
+type PrefixedWriter struct {
+	Prefix []byte
+	Eol    []byte
+	Out    io.Writer
+	buf    *bytes.Buffer
+}
+
+func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWriter {
+	return &PrefixedWriter{
+		Prefix: []byte(prefix + ansi.ColorCode(style)),
+		Eol:    []byte("" + ansi.Reset + "\n"),
+		Out:    out,
+		buf:    &bytes.Buffer{},
+	}
+}
+
+func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
+
+	// If no bytes to write
+	if len(buf) == 0 {
+		return 0, nil
+	}
+
+	n = len(buf)
+
+	// If only one line to write without newline
+	lastLineIdx := bytes.LastIndexByte(buf, '\n')
+	if lastLineIdx < 0 {
+		// If there is nothing in the buffer
+		if p.buf.Len() == 0 {
+			p.buf.Write(p.Prefix)
+		}
+
+		// Write only into the buffer
+		p.buf.Write(buf)
+		return n, nil
+	}
+
+	endsInNewline := (buf[len(buf)-1] == '\n')
+	lines := bytes.Split(buf, []byte{'\n'})
+
+	// If given data ends in newline, skip the last line
+	if endsInNewline {
+		lines = lines[:len(lines)-1]
+	}
+
+	// fmt.Printf("Lines on [%v] endsinnewline %v \n",lines, endsInNewline)
+	for i := range lines {
+		// If either not first line or first and nothing in buffer
+		if i > 0 || (i == 0 && p.buf.Len() == 0) {
+			p.buf.Write(p.Prefix)
+		}
+
+		// If either not last line or last line when ends in a newline
+		if i < len(lines)-1 || (i == len(lines)-1 && endsInNewline) {
+			p.buf.Write(lines[i])
+			p.buf.Write(p.Eol)
+		}
+	}
+
+	// Write to output
+	p.buf.WriteTo(p.Out)
+
+	// Write the last line to buffer for next time if newline isn't present
+	if !endsInNewline {
+		p.buf.Write(lines[len(lines)-1])
+	}
+
+	// // Write first line without prefix if there is already data
+	// if p.buf.Len() > 0 {
+	// 	pos := bytes.IndexByte(buf, '\n')
+	// 	if pos == -1 {
+	// 		pos = len(buf) - 1
+	// 	}
+
+	// 	fmt.Printf("Buf on [%s]\n", buf)
+	// 	p.buf.Write(buf[:pos])
+
+	// 	buf = buf[pos+1:]
+	// 	fmt.Printf("Buf on nyt [%s]\n", buf)
+	// }
+
+	// pos := -1
+	// for len(buf) > 0 {
+	// 	pos = bytes.IndexByte(buf, '\n')
+	// 	if pos == -1 {
+	// 		pos = len(buf) - 1
+	// 	}
+	// 	p.buf.Write(p.Prefix)
+	// 	p.buf.Write(buf[:pos])
+
+	// 	buf = buf[pos+1:]
+	// 	if pos == len(buf) - 1 && noLastNewline {
+	// 		break
+	// 	}
+	// 	p.buf.Write(p.Eol)
+
+	// }
+	// p.buf.WriteTo(p.Out)
+
+	// p.buf.Write(buf)
+
+
+
+	// if p.buf.Len() > 0 {
+	// 	p.buf.Write(lines[0])
+	// 	lines = lines[1:]
+	// }
+
+
+	// lastLineIdx := bytes.LastIndexByte(buf, '\n')
+	// if lastLineIdx < 0 {
+	// 	lastLineIdx = n
+	// }
+	// p.buf.Write(bytes.Replace(buf[:lastLineIdx-1], []byte("\n"), append(p.Eol, p.Prefix...), -1))
+	// p.buf.WriteTo(p.Out)
+	// p.buf.Write(buf[lastLineIdx:])
+
+	// if ! noLastNewLine {
+	// 	buf = buf[:len(buf)-1]
+	// }
+
+	// for i := 0; i < len(lines)-1; i++ {
+	// 	p.buf.Write(p.Prefix)
+	// 	p.buf.Write(lines[i])
+	// 	p.buf.Write(p.Eol)
+	// }
+	// p.buf.WriteTo(p.Out)
+
+	// if noLastNewline {
+	// 	p.buf.Write(p.Prefix)
+	// 	p.buf.Write(lines[len(lines)-1])
+	// }
+
+	return n, nil
+	// var tmp = &bytes.Buffer{}
+	// var wr = func(buf []byte) bool {
+	// 	_, err = tmp.Write(buf)
+	// 	if err != nil {
+	// 		return false
+	// 	}
+	// 	return true
+	// }
+
+	// fmt.Println("Got Data:", string(buf))
+
+	// n = len(buf)
+
+	// pos := -1
+	// for len(buf) > 0 {
+	// 	pos = bytes.IndexRune(buf, '\n')
+	// 	if pos == -1 {
+	// 		pos = len(buf) - 1
+	// 	}
+
+	// 	if !(wr(p.Prefix) && wr(buf[:pos]) && wr(p.Eol)) {
+	// 		return
+	// 	}
+
+	// 	buf = buf[pos+1:]
+	// }
+	// _, err = tmp.WriteTo(p.Out)
+	// return n, err
+}

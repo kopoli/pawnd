@@ -276,50 +276,6 @@ func (o *output) Run(ID string) (err error) {
 
 /////////////////////////////////////////////////////////////
 
-type PrefixedWriter struct {
-	Prefix []byte
-	Eol    []byte
-	Out    io.Writer
-}
-
-// TODO remove the style-argument
-func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWriter {
-	return &PrefixedWriter{
-		Prefix: []byte(prefix + ansi.ColorCode(style)),
-		Eol:    []byte("" + ansi.Reset + "\n"),
-		Out:    out,
-	}
-}
-
-func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
-	var wr = func(buf []byte) bool {
-		_, err = p.Out.Write(buf)
-		if err != nil {
-			return false
-		}
-		return true
-	}
-
-	n = len(buf)
-
-	pos := -1
-	for len(buf) > 0 {
-		pos = bytes.IndexRune(buf, '\n')
-		if pos == -1 {
-			pos = len(buf) - 1
-		}
-
-		if !(wr(p.Prefix) && wr(buf[:pos]) && wr(p.Eol)) {
-			return
-		}
-
-		buf = buf[pos+1:]
-	}
-	return
-}
-
-/////////////////////////////////////////////////////////////
-
 func UiDemo(opts util.Options) {
 
 	emt := &emitter{}
