@@ -166,7 +166,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 
 	var ret = FileAction{
 		Patterns:   patterns,
-		Hysteresis: 500 * time.Millisecond,
+		Hysteresis: 1000 * time.Millisecond,
 		termchan:   make(chan bool),
 	}
 
@@ -227,6 +227,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 			select {
 			case <-threshold.C:
 				if ret.Changed != "" {
+					fmt.Fprintln(ret.Terminal().Verbose(), "Triggering", ret.Changed)
 					ret.Send(ActionName(ret.Changed), MsgTrig)
 				}
 			case event := <-ret.watch.Events:

@@ -82,7 +82,7 @@ func NewTermAction() *TermAction {
 	var ret = &TermAction{
 		drawTicker: time.NewTicker(time.Millisecond * 2000),
 		out:        colorable.NewColorableStdout(),
-		Width:      50,
+		Width:      60,
 		Verbose:    false,
 		readychan:  readychan,
 		buffer: &termWriter{
