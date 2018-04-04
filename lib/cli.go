@@ -26,11 +26,15 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", "Pawnfile"),
 		"File to read the configuration from")
 
+	optVerbose := app.BoolOpt("V verbose", false, "Verbose output")
 	optDemo := app.BoolOpt("d demo", false, "Demo functionality")
 
 	app.Action = func() {
 		opts.Set("configuration-file", *optConfFile)
 
+		if *optVerbose {
+			opts.Set("verbose", "t")
+		}
 		if *optDemo {
 			opts.Set("demo-mode", "t")
 		}

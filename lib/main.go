@@ -9,6 +9,7 @@ import (
 func Main(opts util.Options) error {
 	eb := NewEventBus()
 	ta := NewTermAction()
+	ta.Verbose = opts.IsSet("verbose")
 
 	sa := NewSignalAction(os.Interrupt)
 	eb.Register("sighandler", sa)

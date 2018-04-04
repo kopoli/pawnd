@@ -160,6 +160,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 		for _, p := range ret.Patterns {
 			m, er := path.Match(filepath.Base(p), file)
 			if m && er == nil {
+				fmt.Fprintf(ret.Terminal().Verbose(), "File \"%s\" changed\n", file)
 				return true
 			}
 		}
@@ -318,17 +319,16 @@ func (a *ExecAction) Kill() error {
 }
 
 func (a *ExecAction) Receive(from, message string) {
-	fmt.Println("Execaction", from, message)
 	switch message {
 	case MsgTrig:
-		fmt.Fprintln(a.Terminal().Stdout(), "Running command:", a.Args)
+		fmt.Fprintln(a.Terminal().Verbose(), "Running command:", a.Args)
 		if a.Daemon {
 			_ = a.Kill()
 		}
 		a.wg.Wait()
 		a.Run()
 	case MsgTerm:
-		fmt.Fprintln(a.Terminal().Stdout(), "Terminating command!")
+		fmt.Fprintln(a.Terminal().Verbose(), "Terminating command!")
 		a.Kill()
 	}
 }
@@ -354,23 +354,4 @@ func ActionDemo(opts util.Options) {
 	eb.Run()
 
 	ta.Stop()
-}
-
-func ActionDemo2(opts util.Options) {
-	eb := NewEventBus()
-
-	ia := NewInitAction("a")
-	eb.Register("initer", ia)
-	ea := NewExecAction("ls")
-	eb.Register("a", ea)
-	ea.Succeeded = "b"
-	es := NewExecAction("Second", "command")
-	eb.Register("b", es)
-
-	eb.Send("jeje", "initer", MsgInit)
-
-	time.Sleep(1 * time.Second)
-
-	eb.Send("jeje", "*", MsgTerm)
-	time.Sleep(1 * time.Second)
 }
