@@ -43,20 +43,24 @@ func main() {
 	opts.Set("program-version", progVersion)
 	opts.Set("program-timestamp", timestamp)
 
-	opts.Set("configuration-file", "Pawnfile")
-
 	// In the last deferred function, exit the program with given code
 	defer func() {
 		os.Exit(exitValue)
 	}()
 
 	_, err := pawnd.Cli(opts, os.Args)
-	fault(err, "command line parsing failed")
+	fault(err, "Parsing command line failed")
 
 	if opts.IsSet("demo-mode") {
 		pawnd.ActionDemo(opts)
 		// pawnd.UiDemo(opts)
 		exitValue = 25
+		return
+	}
+
+	if opts.IsSet("generate-templates") {
+		err = pawnd.GenerateTemplates(opts)
+		fault(err, "Generating templates failed")
 		return
 	}
 

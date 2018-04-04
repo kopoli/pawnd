@@ -1,6 +1,9 @@
 package pawnd
 
 import (
+	"fmt"
+	"strings"
+
 	cli "github.com/jawher/mow.cli"
 
 	"github.com/kopoli/go-util"
@@ -10,20 +13,12 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 	progName := opts.Get("program-name", "pawnd")
 
 	app := cli.App(progName, "For running errands and general minioning")
-
 	app.Spec = "[OPTIONS]"
-
 	app.Version("version v", util.VersionString(opts))
 
-	// app.Command("define", "Define a task to run", func(cmd *cli.Cmd) {})
-	// app.Command("modify", "Modify a defined task", func(cmd *cli.Cmd) {})
-	// app.Command("delete", "Delete a defined task", func(cmd *cli.Cmd) {})
+	conffile := "Pawnfile"
 
-	// app.Command("start", "Start a task", func(cmd *cli.Cmd) {})
-	// app.Command("stop", "Stop a task", func(cmd *cli.Cmd) {})
-	// app.Command("restart", "Restart a task", func(cmd *cli.Cmd) {})
-
-	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", "Pawnfile"),
+	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", conffile),
 		"File to read the configuration from")
 
 	optVerbose := app.BoolOpt("V verbose", false, "Verbose output")
@@ -39,6 +34,37 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 			opts.Set("demo-mode", "t")
 		}
 	}
+
+	tmp := Templates()
+	keys := make([]string, 0, len(tmp))
+	for k := range tmp {
+		keys = append(keys, k)
+	}
+
+	genhelp := fmt.Sprintf("Generate %s from a template.\nThe following templates are supported: %s",
+		conffile, strings.Join(keys, ", "))
+
+	app.Command("generate",
+		genhelp,
+		func(cmd *cli.Cmd) {
+			cmd.Spec = "[OPTIONS] [TEMPLATE ...]"
+			argTemplates := cmd.StringsArg("TEMPLATE", nil, "The names of the templates")
+			optStdout := cmd.BoolOpt("c stdout", false, "Print generated to stdout.")
+			optOverwrite := cmd.BoolOpt("o overwrite", false, "Overwrite the file.")
+			optOutfile := cmd.StringOpt("conf", conffile, "File to generate.")
+			cmd.Action = func() {
+				opts.Set("generate-templates", strings.Join(*argTemplates, " "))
+
+				if *optStdout {
+					opts.Set("generate-stdout", "t")
+				}
+				if *optOverwrite {
+					opts.Set("generate-overwrite", "t")
+				}
+
+				opts.Set("generate-configuration-file", *optOutfile)
+			}
+		})
 
 	err = app.Run(argsin)
 	return
