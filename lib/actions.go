@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,14 +67,17 @@ func ActionName(name string) string {
 }
 
 type BaseAction struct {
-	name string
-	bus  *EventBus
-	term Terminal
+	name          string
+	bus           *EventBus
+	term          Terminal
+	statusVisible bool
 }
 
 func (a *BaseAction) Identify(name string, eb *EventBus) {
 	a.name = name
 	a.bus = eb
+	name = strings.TrimPrefix(name, "act:")
+	a.term = RegisterTerminal(name, a.statusVisible)
 }
 
 func (a *BaseAction) Send(to, message string) {
@@ -81,11 +85,12 @@ func (a *BaseAction) Send(to, message string) {
 }
 
 func (a *BaseAction) Terminal() Terminal {
-	if a.term == nil || a.term == GetTerminal("") {
-		a.term = GetTerminal(a.name)
+	if a.term == nil {
+		return GetTerminal("")
 	}
 	return a.term
 }
+
 ///
 
 type InitAction struct {
@@ -123,9 +128,9 @@ type FileAction struct {
 func NewFileAction(patterns ...string) (*FileAction, error) {
 
 	var ret = FileAction{
-		Patterns:    patterns,
-		Hysteresis:  500 * time.Millisecond,
-		termchan:    make(chan bool),
+		Patterns:   patterns,
+		Hysteresis: 500 * time.Millisecond,
+		termchan:   make(chan bool),
 	}
 
 	var err error
@@ -171,7 +176,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 		files := getFileList(ret.Patterns)
 		stderr := ret.Terminal().Stderr()
 		if len(files) == 0 {
-			fmt.Fprintln(stderr,"Error: No watched files")
+			fmt.Fprintln(stderr, "Error: No watched files")
 		}
 		for i := range files {
 			err := ret.watch.Add(files[i])
@@ -262,7 +267,11 @@ type ExecAction struct {
 }
 
 func NewExecAction(args ...string) *ExecAction {
-	return &ExecAction{Args: args}
+	ret := &ExecAction{
+		Args: args,
+	}
+	ret.statusVisible = true
+	return ret
 
 }
 
@@ -278,7 +287,7 @@ func (a *ExecAction) Run() error {
 	err := a.cmd.Start()
 	if err != nil {
 		a.cmd = nil
-		fmt.Fprintln(term.Stderr(),"Error: Starting command failed:", err)
+		fmt.Fprintln(term.Stderr(), "Error: Starting command failed:", err)
 		return err
 	}
 
@@ -312,14 +321,14 @@ func (a *ExecAction) Receive(from, message string) {
 	fmt.Println("Execaction", from, message)
 	switch message {
 	case MsgTrig:
-		fmt.Fprintln(a.Terminal().Stdout(),"Running command:", a.Args)
+		fmt.Fprintln(a.Terminal().Stdout(), "Running command:", a.Args)
 		if a.Daemon {
 			_ = a.Kill()
 		}
 		a.wg.Wait()
 		a.Run()
 	case MsgTerm:
-		fmt.Println(a.Terminal().Stdout(), "Terminating command!")
+		fmt.Fprintln(a.Terminal().Stdout(), "Terminating command!")
 		a.Kill()
 	}
 }
@@ -328,7 +337,6 @@ func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
 
 	ta := NewTermAction()
-	eb.Register("output", ta)
 
 	sa := NewSignalAction(os.Interrupt)
 	eb.Register("sighandler", sa)
@@ -341,9 +349,11 @@ func ActionDemo(opts util.Options) {
 
 	err = CreateActions(f, eb)
 
-	eb.Send("", ToAll, MsgInit)
+	// eb.Send("", ToAll, MsgInit)
 
 	eb.Run()
+
+	ta.Stop()
 }
 
 func ActionDemo2(opts util.Options) {

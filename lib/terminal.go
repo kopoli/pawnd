@@ -9,6 +9,7 @@ import (
 
 	cursor "github.com/ahmetalpbalkan/go-cursor"
 	colorable "github.com/mattn/go-colorable"
+	"github.com/mgutz/ansi"
 )
 
 // Terminal output handling
@@ -38,10 +39,12 @@ type Terminal interface {
 	SetStatus(status string)
 }
 
-// the singleton termaction that can be registered to an EventBus
+// the singleton termaction
 var termAction *TermAction
 
+// TODO Rename this to something else
 type TermAction struct {
+	// TODO change ticker to timer that can be started on MsgInit
 	drawTicker *time.Ticker
 	out        io.Writer
 	buffer     *termWriter
@@ -55,8 +58,6 @@ type TermAction struct {
 	readychan chan bool
 
 	initialized bool
-
-	BaseAction
 }
 
 func NewTermAction() *TermAction {
@@ -67,7 +68,7 @@ func NewTermAction() *TermAction {
 	readychan := make(chan bool)
 
 	var ret = &TermAction{
-		drawTicker: time.NewTicker(time.Millisecond * 3000),
+		drawTicker: time.NewTicker(time.Millisecond * 2000),
 		out:        colorable.NewColorableStdout(),
 		Width:      50,
 		Verbose:    false,
@@ -95,7 +96,7 @@ func NewTermAction() *TermAction {
 	}()
 
 	termAction = ret
-	ret.defaultTerm = RegisterTerminal("init")
+	ret.defaultTerm = RegisterTerminal("init", false)
 	ret.terminals = nil
 
 	return termAction
@@ -104,11 +105,15 @@ func NewTermAction() *TermAction {
 func (a *TermAction) Receive(from, message string) {
 	switch message {
 	case MsgInit:
-		a.drawTicker.Stop()
-		a.drawTicker = time.NewTicker(time.Millisecond * 500)
-	case MsgTerm:
-		a.termchan <- true
+		// a.drawTicker.Stop()
+		// a.drawTicker = time.NewTicker(time.Millisecond * 500)
 	}
+}
+
+// Stop TermAction. This cannot be stopped with the MsgTerm message as some
+// other actions can print while they are terminating.
+func (a *TermAction) Stop() {
+	a.termchan <- true
 }
 
 func GetTerminal(name string) Terminal {
@@ -163,15 +168,20 @@ func (a *TermAction) draw() {
 
 	if !a.initialized {
 		// Make initial vertical space
-		for range a.terminals {
-			tmp.WriteByte('\n')
+		for i := range a.terminals {
+			if a.terminals[i].Visible {
+				tmp.WriteByte('\n')
+			}
 		}
+		a.initialized = true
 	}
 
 	// Clear status lines
-	for range a.terminals {
-		fmt.Fprintf(tmp, "%s%s\r", cursor.MoveUp(1),
-			cursor.ClearEntireLine())
+	for i := range a.terminals {
+		if a.terminals[i].Visible {
+			fmt.Fprintf(tmp, "%s%s\r", cursor.MoveUp(1),
+				cursor.ClearEntireLine())
+		}
 	}
 
 	// Get the trace output from registered Terminals
@@ -181,17 +191,19 @@ func (a *TermAction) draw() {
 		if trace[len(trace)-1] != '\n' {
 			a.buffer.out.WriteByte('\n')
 		}
+		// fmt.Printf("ZAZAZA\n[%s]\nZAZAZAZA\n", a.buffer.out.String())
 		a.buffer.out.WriteTo(tmp)
 	}
 	a.buffer.mutex.Unlock()
 
 	// Print the status lines
 	for i := range a.terminals {
-		drawStatus(a.terminals[i], a.Width, tmp)
-		tmp.WriteByte('\n')
+		if a.terminals[i].Visible {
+			drawStatus(a.terminals[i], a.Width, tmp)
+			tmp.WriteByte('\n')
+		}
 	}
 	tmp.WriteTo(a.out)
-	a.initialized = true
 }
 
 ///
@@ -212,6 +224,7 @@ type terminal struct {
 	Name     string
 	Status   string // Current status of the process
 	Progress int    // progress bar from 0 - 100 or negative for a spinner
+	Visible  bool
 
 	out     *PrefixedWriter
 	err     *PrefixedWriter
@@ -219,12 +232,13 @@ type terminal struct {
 }
 
 //
-func RegisterTerminal(name string) Terminal {
-	name = fmt.Sprintf("[%s]", name)
+func RegisterTerminal(name string, visible bool) Terminal {
+	prefix := fmt.Sprintf("[%s] ", name)
 	var ret = terminal{
-		Name: name,
-		out:  NewPrefixedWriter(name, "", termAction.buffer),
-		err:  NewPrefixedWriter(name, "red", termAction.buffer),
+		Name:    name,
+		Visible: visible,
+		out:     NewPrefixedWriter(prefix, "", termAction.buffer),
+		err:     NewPrefixedWriter(prefix, "red", termAction.buffer),
 	}
 	ret.verbose = &VerboseWriter{ret.out, termAction.Verbose}
 	termAction.terminals = append(termAction.terminals, &ret)

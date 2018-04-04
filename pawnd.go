@@ -27,11 +27,13 @@ func printErr(err error, message string, arg ...string) {
 }
 
 func fault(err error, message string, arg ...string) {
-	printErr(err, message, arg...)
+	if err != nil {
+		printErr(err, message, arg...)
 
-	// Exit goroutine and run all deferrals
-	exitValue = 1
-	runtime.Goexit()
+		// Exit goroutine and run all deferrals
+		exitValue = 1
+		runtime.Goexit()
+	}
 }
 
 func main() {
@@ -41,7 +43,7 @@ func main() {
 	opts.Set("program-version", progVersion)
 	opts.Set("program-timestamp", timestamp)
 
-	opts.Set("configuration-file", "pawnd.conf")
+	opts.Set("configuration-file", "Pawnfile")
 
 	// In the last deferred function, exit the program with given code
 	defer func() {
@@ -49,9 +51,7 @@ func main() {
 	}()
 
 	_, err := pawnd.Cli(opts, os.Args)
-	if err != nil {
-		fault(err, "command line parsing failed")
-	}
+	fault(err, "command line parsing failed")
 
 	if opts.IsSet("demo-mode") {
 		pawnd.ActionDemo(opts)
@@ -60,8 +60,7 @@ func main() {
 		return
 	}
 
-	err = pawnd.TestRun(opts)
-	if err != nil {
-		fault(err, "Running chains failed")
-	}
+	err = pawnd.Main(opts)
+	fault(err, "Running pawnd failed")
+	return
 }

@@ -1,7 +1,6 @@
 package pawnd
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/ryanuber/go-glob"
@@ -66,20 +65,14 @@ type Message struct {
 }
 
 func (eb *EventBus) Send(from, to, message string) {
-	fmt.Println("chan on ", eb.msgchan)
-	fmt.Println("message on", from, to, message)
 	eb.msgchan <- Message{from, to, message}
 }
 
 // Run until terminated
 func (eb *EventBus) Run() {
+	eb.Send("", ToAll, MsgInit)
 	eb.wg.Wait()
 }
-
-// // Terminate sends MsgTerm to all links and waits for all the handlers to return
-// func (eb *EventBus) Terminate() {
-// 	// TODO
-// }
 
 func NewEventBus() *EventBus {
 	var ret = EventBus{
