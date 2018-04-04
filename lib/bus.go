@@ -24,7 +24,6 @@ var (
 	MsgTrig = "trigger"   // Make action happen
 
 	ToAll    = "*"
-	ToOutput = "out:*"
 )
 
 // EventBus conveys messages to Listeners

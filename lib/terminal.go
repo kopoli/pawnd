@@ -12,7 +12,17 @@ import (
 	"github.com/mgutz/ansi"
 )
 
-var spinner = `-/|\`
+var (
+	spinner = `-/|\`
+
+	//
+	statusRun  = "run"
+	statusOk   = "ok"
+	statusFail = "fail"
+
+	//
+	infoDaemon = "daemon"
+)
 
 // Terminal output handling
 
@@ -38,7 +48,7 @@ type Terminal interface {
 	Stderr() io.Writer
 	Stdout() io.Writer
 	Verbose() io.Writer
-	SetStatus(status string)
+	SetStatus(status string, info string)
 }
 
 // the singleton termaction
@@ -142,25 +152,48 @@ func (a *TermAction) updateProgress() {
 	}
 }
 
-func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
-	fmt.Fprintf(out, "[%s][%s] ", t.Name, t.Status)
-	if t.Progress >= 0 {
-		out.WriteByte('[')
-		fillwidth := maxwidth * t.Progress / 100
-		if t.Progress > 0 {
-			for i := 0; i < fillwidth-1; i++ {
-				out.WriteByte('=')
-			}
-			if t.Progress < 100 {
-				out.WriteByte('>')
-			}
-		}
+func formatStatus(status, name string) string {
+	switch status {
+	case statusRun:
+		status = ansi.ColorCode("yellow+h") + "RUN " + ansi.Reset
+	case statusOk:
+		status = ansi.ColorCode("green+h") + "OK  " + ansi.Reset
+	case statusFail:
+		status = ansi.ColorCode("red+h") + "FAIL" + ansi.Reset
+	case "":
+		status = ansi.ColorCode("grey+h") + "WAIT" + ansi.Reset
+	}
+	return fmt.Sprintf("[%s][%s] ", status, name)
+}
 
-		for i := 0; i < maxwidth-fillwidth; i++ {
-			out.WriteByte('-')
+func drawProgressBar(width int, progress int, out *bytes.Buffer) {
+	out.WriteByte('[')
+	fillwidth := width * progress / 100
+	if progress >= 0 {
+		for i := 0; i < fillwidth-1; i++ {
+			out.WriteByte('=')
 		}
-		out.WriteByte(']')
-	} else {
+		if progress < 100 {
+			out.WriteByte('>')
+		}
+	}
+
+	for i := 0; i < width-fillwidth; i++ {
+		out.WriteByte('-')
+	}
+	out.WriteByte(']')
+}
+
+func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
+	badge := formatStatus(t.Status, t.Name)
+	out.WriteString(badge)
+	maxwidth -= 4 + 4 + len(t.Name)
+	switch {
+	case t.Progress == 100 && t.Info != "":
+		fmt.Fprintf(out, "%s", t.Info)
+	case t.Progress >= 0:
+		drawProgressBar(maxwidth, t.Progress, out)
+	default:
 		out.WriteByte(spinner[(t.Progress*-1)%len(spinner)])
 	}
 }
@@ -193,7 +226,6 @@ func (a *TermAction) draw() {
 		if trace[len(trace)-1] != '\n' {
 			a.buffer.out.WriteByte('\n')
 		}
-		// fmt.Printf("ZAZAZA\n[%s]\nZAZAZAZA\n", a.buffer.out.String())
 		a.buffer.out.WriteTo(tmp)
 	}
 	a.buffer.mutex.Unlock()
@@ -225,12 +257,16 @@ func (w *VerboseWriter) Write(buf []byte) (int, error) {
 type terminal struct {
 	Name     string
 	Status   string // Current status of the process
+	Info     string // additional info of the status
 	Progress int    // progress bar from 0 - 100 or negative for a spinner
 	Visible  bool
 
 	out     *PrefixedWriter
 	err     *PrefixedWriter
 	verbose *VerboseWriter
+
+	runtime   time.Duration
+	startTime time.Time
 }
 
 //
@@ -259,8 +295,25 @@ func (t *terminal) Verbose() io.Writer {
 	return t.verbose
 }
 
-func (t *terminal) SetStatus(status string) {
+func (t *terminal) SetStatus(status string, info string) {
 	t.Status = status
+	t.Info = info
+
+	switch status {
+	case statusRun:
+		t.startTime = time.Now()
+		t.Progress = 0
+		if info == infoDaemon {
+			t.Progress = -1
+		}
+	case statusFail:
+		fallthrough
+	case statusOk:
+		t.runtime = time.Since(t.startTime)
+		t.Progress = 100
+	}
+
+	termAction.readychan <- true
 }
 
 type PrefixedWriter struct {

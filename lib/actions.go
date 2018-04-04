@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	util "github.com/kopoli/go-util"
@@ -136,7 +137,6 @@ func uniqStr(in []string) (out []string) {
 	out = make([]string, len(set))
 	for item := range set {
 		out = append(out, item)
-		// fmt.Println("item:[", item, "]")
 	}
 	return
 }
@@ -328,20 +328,29 @@ func (a *ExecAction) Run() error {
 		return err
 	}
 
-	term.SetStatus("run")
+	info := ""
+	if a.Daemon {
+		info = infoDaemon
+	}
+	term.SetStatus(statusRun, info)
+
 	err = a.cmd.Wait()
 	if err == nil {
 		if a.Succeeded != "" {
 			a.Send(ActionName(a.Succeeded), MsgTrig)
 		}
-		a.Send(ToOutput, a.name+"-ok")
-		term.SetStatus("ok")
+		term.SetStatus(statusOk, "")
 	} else {
+		info = ""
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitstatus := exitError.Sys().(syscall.WaitStatus)
+			info = fmt.Sprintf("Failed with code: %d",
+				waitstatus.ExitStatus())
+		}
 		if a.Failed != "" {
 			a.Send(ActionName(a.Failed), MsgTrig)
 		}
-		a.Send(ToOutput, a.name+"-fail")
-		term.SetStatus("fail")
+		term.SetStatus(statusFail, info)
 	}
 	a.cmd = nil
 	return err
