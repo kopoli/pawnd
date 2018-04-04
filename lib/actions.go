@@ -338,6 +338,7 @@ func (a *ExecAction) Run() error {
 	err = a.cmd.Wait()
 	if err == nil {
 		if a.Succeeded != "" {
+			fmt.Fprintln(a.Terminal().Verbose(), "Succeeded. Triggering:", a.Succeeded)
 			a.Send(ActionName(a.Succeeded), MsgTrig)
 		}
 		term.SetStatus(statusOk, "")
@@ -349,6 +350,7 @@ func (a *ExecAction) Run() error {
 				waitstatus.ExitStatus())
 		}
 		if a.Failed != "" {
+			fmt.Fprintln(a.Terminal().Verbose(), "Failed. Triggering:", a.Failed)
 			a.Send(ActionName(a.Failed), MsgTrig)
 		}
 		term.SetStatus(statusFail, info)
