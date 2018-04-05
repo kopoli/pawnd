@@ -56,11 +56,11 @@ var termOutput *TerminalOutput
 
 type TerminalOutput struct {
 	updateInterval time.Duration
-	out        io.Writer
-	buffer     *termWriter
-	terminals  []*terminal
-	Width      int
-	Verbose    bool
+	out            io.Writer
+	buffer         *termWriter
+	terminals      []*terminal
+	Width          int
+	Verbose        bool
 
 	defaultTerm Terminal
 
@@ -79,10 +79,10 @@ func NewTerminalOutput() *TerminalOutput {
 
 	var ret = &TerminalOutput{
 		updateInterval: time.Second * 2,
-		out:        colorable.NewColorableStdout(),
-		Width:      60,
-		Verbose:    false,
-		readychan:  readychan,
+		out:            colorable.NewColorableStdout(),
+		Width:          60,
+		Verbose:        false,
+		readychan:      readychan,
 		buffer: &termWriter{
 			ready: readychan,
 			out:   &bytes.Buffer{},
@@ -271,8 +271,8 @@ func RegisterTerminal(name string, visible bool) Terminal {
 	var ret = terminal{
 		Name:    name,
 		Visible: visible,
-		out:     NewPrefixedWriter(prefix, "", termOutput.buffer),
-		err:     NewPrefixedWriter(prefix, "red", termOutput.buffer),
+		out:     NewPrefixedWriter(prefix, termOutput.buffer),
+		err:     NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer),
 	}
 	ret.verbose = &VerboseWriter{ret.out, termOutput.Verbose}
 	termOutput.terminals = append(termOutput.terminals, &ret)
@@ -331,28 +331,32 @@ func (t *terminal) SetStatus(status string, info string) {
 	termOutput.readychan <- true
 }
 
+// PrefixedWriter is an io.Writer that prefixes and suffixes all lines given
+// to it.
 type PrefixedWriter struct {
-	Prefix []byte
-	Eol    []byte
-	Out    io.Writer
-	TimeStamp bool
-	buf    *bytes.Buffer
+	Prefix    []byte        // Prefix to add to each line
+	Eol       []byte        // Suffix to add each line
+	Out       io.Writer     // Write everything to this writer.
+	TimeStamp bool          // Add timestamps to output
+	buf       *bytes.Buffer // buffer to house incomplete lines
 }
 
-func NewPrefixedWriter(prefix string, style string, out io.Writer) *PrefixedWriter {
+// NewPrefixedWriter create a PrefixedWriter with given prefix and write
+// everything to out.
+func NewPrefixedWriter(prefix string, out io.Writer) *PrefixedWriter {
 	return &PrefixedWriter{
-		Prefix: []byte(prefix + ansi.ColorCode(style)),
-		Eol:    []byte("" + ansi.Reset + "\n"),
-		Out:    out,
+		Prefix:    []byte(prefix),
+		Eol:       []byte("" + ansi.Reset + "\n"),
+		Out:       out,
 		TimeStamp: true,
-		buf:    &bytes.Buffer{},
+		buf:       &bytes.Buffer{},
 	}
 }
 
-// Write given buf with a prefix to the Out writer. Only write lines ending
-// with a newline. If the input data doesn't contain a newline, the data is
-// written to an internal buffer which is flushed the next time data with
-// newline is given.
+// Write writes given buf with a prefix to the Out writer. Only write lines
+// ending with a newline. If the input data doesn't contain a newline, the
+// data is written to an internal buffer which is flushed the next time data
+// with newline is given.
 func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 
 	// If no bytes to write
