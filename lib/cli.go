@@ -24,6 +24,9 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 	optVerbose := app.BoolOpt("V verbose", false, "Verbose output")
 	optDemo := app.BoolOpt("d demo", false, "Demo functionality")
 
+	optLicenseSummary := app.BoolOpt("license-summary", false, "Display summary of the licenses of dependencies")
+	optLicenseTexts := app.BoolOpt("license-texts", false, "Display full licenses of dependencies")
+
 	app.Action = func() {
 		opts.Set("configuration-file", *optConfFile)
 
@@ -32,6 +35,12 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 		}
 		if *optDemo {
 			opts.Set("demo-mode", "t")
+		}
+		if *optLicenseSummary {
+			opts.Set("license-summary", "t")
+		}
+		if *optLicenseTexts {
+			opts.Set("license-texts", "t")
 		}
 	}
 

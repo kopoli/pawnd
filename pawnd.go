@@ -1,9 +1,12 @@
 package main
 
+//go:generate licrep -o licenses.go --prefix "pawnd" -i "mow.cli/internal" -i "pawnd/lib"
+
 import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/kopoli/go-util"
@@ -42,9 +45,34 @@ func main() {
 	_, err := pawnd.Cli(opts, os.Args)
 	fault(err, "Parsing command line failed")
 
+	if opts.IsSet("license-summary") || opts.IsSet("license-texts") {
+		licenses, err := pawndGetLicenses()
+		fault(err, "Internal error getting embedded licenses")
+
+		var names []string
+		for i := range licenses {
+			names = append(names, i)
+		}
+		sort.Strings(names)
+
+		if opts.IsSet("license-summary") {
+			fmt.Println("Licenses:")
+			for _, i := range names {
+				fmt.Printf("%s: %s\n", i, licenses[i].Name)
+			}
+			fmt.Println("")
+		} else {
+			fmt.Println("License texts of depending packages:")
+			for _, i := range names {
+				fmt.Printf("* %s:\n\n%s\n\n", i, licenses[i].Text)
+			}
+		}
+
+		return
+	}
+
 	if opts.IsSet("demo-mode") {
 		pawnd.ActionDemo(opts)
-		// pawnd.UiDemo(opts)
 		exitValue = 25
 		return
 	}
