@@ -55,7 +55,7 @@ type Terminal interface {
 var termOutput *TerminalOutput
 
 type TerminalOutput struct {
-	drawTicker *time.Ticker
+	updateInterval time.Duration
 	out        io.Writer
 	buffer     *termWriter
 	terminals  []*terminal
@@ -78,7 +78,7 @@ func NewTerminalOutput() *TerminalOutput {
 	readychan := make(chan bool)
 
 	var ret = &TerminalOutput{
-		drawTicker: time.NewTicker(time.Millisecond * 2000),
+		updateInterval: time.Second * 2,
 		out:        colorable.NewColorableStdout(),
 		Width:      60,
 		Verbose:    false,
@@ -91,12 +91,15 @@ func NewTerminalOutput() *TerminalOutput {
 	}
 
 	go func() {
+		drawTimer := time.NewTimer(ret.updateInterval)
 	loop:
 		for {
 			select {
-			case <-ret.drawTicker.C:
-				ret.updateProgress()
+			case <-drawTimer.C:
+				ret.updateSpinners()
 				ret.draw()
+				stopTimer(drawTimer)
+				drawTimer.Reset(ret.updateInterval)
 			case <-ret.readychan:
 				ret.draw()
 			case <-ret.termchan:
@@ -131,7 +134,7 @@ func GetTerminal(name string) Terminal {
 }
 
 // updateProgress updates the progress-bars and spinners
-func (a *TerminalOutput) updateProgress() {
+func (a *TerminalOutput) updateSpinners() {
 	for _, t := range a.terminals {
 		if t.Progress < 0 {
 			t.Progress = -((-t.Progress + 1) % (len(spinner) + 1))

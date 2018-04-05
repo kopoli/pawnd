@@ -127,8 +127,8 @@ type FileAction struct {
 
 	Changed []string
 
-	termchan    chan bool
-	watch       *fsnotify.Watcher
+	termchan chan bool
+	watch    *fsnotify.Watcher
 
 	BaseAction
 }
@@ -168,6 +168,16 @@ func getFileList(patterns []string) (ret []string) {
 	return
 }
 
+// stopTimer stops time.Timer correctly
+func stopTimer(t *time.Timer) {
+	if !t.Stop() {
+		select {
+		case <-t.C:
+		default:
+		}
+	}
+}
+
 func NewFileAction(patterns ...string) (*FileAction, error) {
 
 	var ret = FileAction{
@@ -181,15 +191,6 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 	if err != nil {
 		util.E.Annotate(err, "Could not create a new watcher")
 		return nil, err
-	}
-
-	stopTimer := func(t *time.Timer) {
-		if !t.Stop() {
-			select {
-			case <-t.C:
-			default:
-			}
-		}
 	}
 
 	matchPattern := func(file string) bool {
