@@ -93,6 +93,13 @@ func (a *BaseAction) Terminal() Terminal {
 	return a.term
 }
 
+func (a *BaseAction) trigger(ids []string) {
+	for i := range ids {
+		fmt.Fprintln(a.Terminal().Verbose(), "Triggering", ids[i])
+		a.Send(ActionName(ids[i]), MsgTrig)
+	}
+}
+
 ///
 
 type InitAction struct {
@@ -118,7 +125,7 @@ type FileAction struct {
 	Patterns   []string
 	Hysteresis time.Duration
 
-	Changed string
+	Changed []string
 
 	triggerName string
 	termchan    chan bool
@@ -226,10 +233,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 		for {
 			select {
 			case <-threshold.C:
-				if ret.Changed != "" {
-					fmt.Fprintln(ret.Terminal().Verbose(), "Triggering", ret.Changed)
-					ret.Send(ActionName(ret.Changed), MsgTrig)
-				}
+				ret.trigger(ret.Changed)
 			case event := <-ret.watch.Events:
 				if matchPattern(event.Name) {
 					stopTimer(threshold)
@@ -295,8 +299,8 @@ type ExecAction struct {
 	Args []string
 
 	Daemon    bool
-	Succeeded string
-	Failed    string
+	Succeeded []string
+	Failed    []string
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
@@ -337,10 +341,7 @@ func (a *ExecAction) Run() error {
 
 	err = a.cmd.Wait()
 	if err == nil {
-		if a.Succeeded != "" {
-			fmt.Fprintln(a.Terminal().Verbose(), "Succeeded. Triggering:", a.Succeeded)
-			a.Send(ActionName(a.Succeeded), MsgTrig)
-		}
+		a.trigger(a.Succeeded)
 		term.SetStatus(statusOk, "")
 	} else {
 		info = ""
@@ -349,10 +350,7 @@ func (a *ExecAction) Run() error {
 			info = fmt.Sprintf("Failed with code: %d",
 				waitstatus.ExitStatus())
 		}
-		if a.Failed != "" {
-			fmt.Fprintln(a.Terminal().Verbose(), "Failed. Triggering:", a.Failed)
-			a.Send(ActionName(a.Failed), MsgTrig)
-		}
+		a.trigger(a.Failed)
 		term.SetStatus(statusFail, info)
 	}
 	a.cmd = nil

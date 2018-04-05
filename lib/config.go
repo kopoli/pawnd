@@ -112,8 +112,8 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			key := sect.Key(keyname)
 			a := NewExecAction(splitWsQuote(key.String())...)
 			a.Daemon = daemon
-			a.Succeeded = sect.Key("succeeded").String()
-			a.Failed = sect.Key("failed").String()
+			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
+			a.Failed = splitWsQuote(sect.Key("failed").Value())
 
 			bus.Register(ActionName(sect.Name()), a)
 
@@ -125,7 +125,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			key := sect.Key("file")
 			a, err := NewFileAction(splitWsQuote(key.String())...)
 			if err == nil {
-				a.Changed = sect.Key("changed").String()
+				a.Changed = splitWsQuote(sect.Key("changed").Value())
 				a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
 				bus.Register(ActionName(sect.Name()), a)
 			}
