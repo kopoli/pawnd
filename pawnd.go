@@ -18,18 +18,9 @@ var (
 	exitValue    int = 0
 )
 
-func printErr(err error, message string, arg ...string) {
-	msg := ""
-	if err != nil {
-		msg = fmt.Sprintf(" (error: %s)", err)
-	}
-	fmt.Fprintf(os.Stderr, "Error: %s%s.%s\n", message, strings.Join(arg, " "), msg)
-}
-
 func fault(err error, message string, arg ...string) {
 	if err != nil {
-		printErr(err, message, arg...)
-
+		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
 		// Exit goroutine and run all deferrals
 		exitValue = 1
 		runtime.Goexit()

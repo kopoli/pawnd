@@ -47,7 +47,20 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if len(sect.ChildSections()) != 0 {
-			err = util.E.New("No child sections supported")
+			err = fmt.Errorf("No child sections supported")
+			goto fail
+		}
+
+		count := 0
+		types := []string{"daemon", "exec", "file"}
+		for i := range types {
+			if sect.HasKey(types[i]) {
+				count++
+			}
+		}
+
+		if count != 1 {
+			err = fmt.Errorf("Each section should have exactly one of: %s", strings.Join(types, ", "))
 			goto fail
 		}
 	}
@@ -88,7 +101,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 
 			if sect.HasKey("init") {
 				a := NewInitAction(ActionName(sect.Name()))
-				bus.Register(fmt.Sprintf("init:%d", ActionName(sect.Name())), a)
+				bus.Register(fmt.Sprintf("init:%s", ActionName(sect.Name())), a)
 			}
 		} else if sect.HasKey("file") {
 			key := sect.Key("file")

@@ -41,7 +41,7 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 		keys = append(keys, k)
 	}
 
-	genhelp := fmt.Sprintf("Generate %s from a template.\nThe following templates are supported: %s",
+	genhelp := fmt.Sprintf("Generate %s from templates. The following templates are supported: %s",
 		conffile, strings.Join(keys, ", "))
 
 	app.Command("generate",
