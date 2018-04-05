@@ -35,7 +35,6 @@ func splitWsQuote(s string) []string {
 func ValidateConfig(filename string) (*ini.File, error) {
 	fp, err := ini.LoadSources(ini.LoadOptions{
 		AllowBooleanKeys: true,
-		AllowShadows:     true,
 	}, filename)
 	if err != nil {
 		err = util.E.Annotate(err, "Could not load configuration")
@@ -48,7 +47,8 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if len(sect.ChildSections()) != 0 {
-			err = fmt.Errorf("No child sections supported")
+			err = fmt.Errorf("Section \"%s\": No child sections supported",
+				sect.Name())
 			goto fail
 		}
 
@@ -90,18 +90,7 @@ fail:
 }
 
 func CreateActions(file *ini.File, bus *EventBus) error {
-
 	for _, sect := range file.Sections() {
-		if sect.Name() == ini.DEFAULT_SECTION {
-			k, err := sect.GetKey("init")
-			if err == nil {
-				for _, v := range k.ValueWithShadows() {
-					a := NewInitAction(ActionName(v))
-					bus.Register(fmt.Sprintf("init:%s", ActionName(v)), a)
-				}
-			}
-			continue
-		}
 		if sect.HasKey("exec") || sect.HasKey("daemon") {
 			keyname := "exec"
 			daemon := false
