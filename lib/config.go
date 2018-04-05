@@ -34,6 +34,7 @@ func splitWsQuote(s string) []string {
 
 func ValidateConfig(filename string) (*ini.File, error) {
 	fp, err := ini.LoadSources(ini.LoadOptions{
+		IgnoreInlineComment: true,
 		AllowBooleanKeys: true,
 	}, filename)
 	if err != nil {
