@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -24,9 +23,8 @@ var (
 func fault(err error, message string, arg ...string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
-		// Exit goroutine and run all deferrals
 		exitValue = 1
-		runtime.Goexit()
+		os.Exit(exitValue)
 	}
 }
 
@@ -36,11 +34,6 @@ func main() {
 	opts.Set("program-name", os.Args[0])
 	opts.Set("program-version", progVersion)
 	opts.Set("program-timestamp", timestamp)
-
-	// In the last deferred function, exit the program with given code
-	defer func() {
-		os.Exit(exitValue)
-	}()
 
 	_, err := pawnd.Cli(opts, os.Args)
 	fault(err, "Parsing command line failed")
