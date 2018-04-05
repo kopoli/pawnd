@@ -127,7 +127,6 @@ type FileAction struct {
 
 	Changed []string
 
-	triggerName string
 	termchan    chan bool
 	watch       *fsnotify.Watcher
 
@@ -303,7 +302,6 @@ type ExecAction struct {
 	Failed    []string
 
 	CoolDown time.Duration
-	prevrun  time.Time
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
@@ -405,7 +403,7 @@ func ActionDemo(opts util.Options) {
 		return
 	}
 
-	err = CreateActions(f, eb)
+	CreateActions(f, eb)
 
 	eb.Run()
 

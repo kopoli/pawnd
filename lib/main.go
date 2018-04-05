@@ -20,6 +20,9 @@ func Main(opts util.Options) error {
 	}
 
 	err = CreateActions(f, eb)
+	if err != nil {
+		return err
+	}
 
 	eb.Run()
 	ta.Stop()

@@ -57,5 +57,4 @@ func main() {
 
 	err = pawnd.Main(opts)
 	fault(err, "Running pawnd failed")
-	return
 }

@@ -23,7 +23,7 @@ var (
 	MsgTerm = "terminate" // Stop all processing
 	MsgTrig = "trigger"   // Make action happen
 
-	ToAll    = "*"
+	ToAll = "*"
 )
 
 // EventBus conveys messages to Listeners
@@ -79,30 +79,27 @@ func NewEventBus() *EventBus {
 		msgchan: make(chan Message),
 	}
 
+	ret.wg.Add(1)
 	go func() {
-		ret.wg.Add(1)
 	loop:
-		for {
-			select {
-			case msg := <-ret.msgchan:
-				ret.mutex.Lock()
-				if msg.Contents != MsgTerm {
-					for k := range ret.links {
-						if glob.Glob(msg.To, k) {
-							go ret.links[k].Receive(msg.From, msg.Contents)
-						}
-					}
-				} else {
-					for k := range ret.links {
-						if glob.Glob(msg.To, k) {
-							ret.links[k].Receive(msg.From, msg.Contents)
-						}
+		for msg := range ret.msgchan {
+			ret.mutex.Lock()
+			if msg.Contents != MsgTerm {
+				for k := range ret.links {
+					if glob.Glob(msg.To, k) {
+						go ret.links[k].Receive(msg.From, msg.Contents)
 					}
 				}
-				ret.mutex.Unlock()
-				if msg.Contents == MsgTerm {
-					break loop
+			} else {
+				for k := range ret.links {
+					if glob.Glob(msg.To, k) {
+						ret.links[k].Receive(msg.From, msg.Contents)
+					}
 				}
+			}
+			ret.mutex.Unlock()
+			if msg.Contents == MsgTerm {
+				break loop
 			}
 		}
 		ret.wg.Done()
