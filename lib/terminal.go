@@ -52,11 +52,9 @@ type Terminal interface {
 }
 
 // the singleton termaction
-var termAction *TermAction
+var termOutput *TerminalOutput
 
-// TODO Rename this to something else
-type TermAction struct {
-	// TODO change ticker to timer that can be started on MsgInit
+type TerminalOutput struct {
 	drawTicker *time.Ticker
 	out        io.Writer
 	buffer     *termWriter
@@ -72,14 +70,14 @@ type TermAction struct {
 	initialized bool
 }
 
-func NewTermAction() *TermAction {
-	if termAction != nil {
-		return termAction
+func NewTerminalOutput() *TerminalOutput {
+	if termOutput != nil {
+		return termOutput
 	}
 
 	readychan := make(chan bool)
 
-	var ret = &TermAction{
+	var ret = &TerminalOutput{
 		drawTicker: time.NewTicker(time.Millisecond * 2000),
 		out:        colorable.NewColorableStdout(),
 		Width:      60,
@@ -107,41 +105,33 @@ func NewTermAction() *TermAction {
 		}
 	}()
 
-	termAction = ret
+	termOutput = ret
 	ret.defaultTerm = RegisterTerminal("init", false)
 	ret.terminals = nil
 
-	return termAction
+	return termOutput
 }
 
-func (a *TermAction) Receive(from, message string) {
-	switch message {
-	case MsgInit:
-		// a.drawTicker.Stop()
-		// a.drawTicker = time.NewTicker(time.Millisecond * 500)
-	}
-}
-
-// Stop TermAction. This cannot be stopped with the MsgTerm message as some
+// Stop TerminalOutput. This cannot be stopped with the MsgTerm message as some
 // other actions can print while they are terminating.
-func (a *TermAction) Stop() {
+func (a *TerminalOutput) Stop() {
 	a.termchan <- true
 }
 
 func GetTerminal(name string) Terminal {
 	if name == "" {
-		return termAction.defaultTerm
+		return termOutput.defaultTerm
 	}
-	for i := range termAction.terminals {
-		if name == termAction.terminals[i].Name {
-			return termAction.terminals[i]
+	for i := range termOutput.terminals {
+		if name == termOutput.terminals[i].Name {
+			return termOutput.terminals[i]
 		}
 	}
-	return termAction.defaultTerm
+	return termOutput.defaultTerm
 }
 
 // updateProgress updates the progress-bars and spinners
-func (a *TermAction) updateProgress() {
+func (a *TerminalOutput) updateProgress() {
 	for _, t := range a.terminals {
 		if t.Progress < 0 {
 			t.Progress = -((-t.Progress + 1) % (len(spinner) + 1))
@@ -198,7 +188,7 @@ func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
 	}
 }
 
-func (a *TermAction) draw() {
+func (a *TerminalOutput) draw() {
 	tmp := &bytes.Buffer{}
 
 	if !a.initialized {
@@ -275,11 +265,11 @@ func RegisterTerminal(name string, visible bool) Terminal {
 	var ret = terminal{
 		Name:    name,
 		Visible: visible,
-		out:     NewPrefixedWriter(prefix, "", termAction.buffer),
-		err:     NewPrefixedWriter(prefix, "red", termAction.buffer),
+		out:     NewPrefixedWriter(prefix, "", termOutput.buffer),
+		err:     NewPrefixedWriter(prefix, "red", termOutput.buffer),
 	}
-	ret.verbose = &VerboseWriter{ret.out, termAction.Verbose}
-	termAction.terminals = append(termAction.terminals, &ret)
+	ret.verbose = &VerboseWriter{ret.out, termOutput.Verbose}
+	termOutput.terminals = append(termOutput.terminals, &ret)
 	return &ret
 }
 
@@ -313,7 +303,7 @@ func (t *terminal) SetStatus(status string, info string) {
 		t.Progress = 100
 	}
 
-	termAction.readychan <- true
+	termOutput.readychan <- true
 }
 
 type PrefixedWriter struct {

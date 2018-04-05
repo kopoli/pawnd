@@ -384,7 +384,7 @@ func (a *ExecAction) Receive(from, message string) {
 func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
 
-	ta := NewTermAction()
+	ta := NewTerminalOutput()
 
 	sa := NewSignalAction(os.Interrupt)
 	eb.Register("sighandler", sa)
@@ -396,8 +396,6 @@ func ActionDemo(opts util.Options) {
 	}
 
 	err = CreateActions(f, eb)
-
-	// eb.Send("", ToAll, MsgInit)
 
 	eb.Run()
 
