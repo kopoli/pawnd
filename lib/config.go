@@ -3,6 +3,7 @@ package pawnd
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	util "github.com/kopoli/go-util"
@@ -60,8 +61,25 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if count != 1 {
-			err = fmt.Errorf("Each section should have exactly one of: %s", strings.Join(types, ", "))
+			err = fmt.Errorf("Section \"%s\": A secion should have exactly one of: %s",
+				sect.Name(),
+				strings.Join(types, ", "))
 			goto fail
+		}
+
+		if sect.HasKey("file") {
+			key := "hysteresis"
+			if sect.HasKey(key) {
+				var d time.Duration
+				var zero time.Duration
+				d, err = sect.Key(key).Duration()
+				if err != nil || d < zero {
+
+					err = fmt.Errorf("Section \"%s\": Given hysteresis should be a non-negative Duration",
+						sect.Name())
+					goto fail
+				}
+			}
 		}
 	}
 
@@ -108,6 +126,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a, err := NewFileAction(splitWsQuote(key.String())...)
 			if err == nil {
 				a.Changed = sect.Key("changed").String()
+				a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
 				bus.Register(ActionName(sect.Name()), a)
 			}
 		}
