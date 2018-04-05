@@ -262,6 +262,7 @@ type terminal struct {
 
 	runtime   time.Duration
 	startTime time.Time
+	runtimer  *time.Timer
 }
 
 // RegisterTerminal registers an interface to outputting
@@ -300,12 +301,31 @@ func (t *terminal) SetStatus(status string, info string) {
 		t.Progress = 0
 		if info == infoDaemon {
 			t.Progress = -1
+		} else {
+			redrawtime := time.Millisecond * 200
+			t.runtimer = time.NewTimer(redrawtime)
+			go func() {
+				for range t.runtimer.C {
+					t.runtimer.Reset(redrawtime)
+
+					curduration := time.Since(t.startTime)
+					if curduration >= t.runtime {
+						t.Progress = 100
+					} else {
+						t.Progress = int((curduration * 100 / t.runtime))
+					}
+					termOutput.readychan <- true
+				}
+			}()
 		}
 	case statusFail:
 		fallthrough
 	case statusOk:
 		t.runtime = time.Since(t.startTime)
 		t.Progress = 100
+		if t.runtimer != nil {
+			stopTimer(t.runtimer)
+		}
 	}
 
 	termOutput.readychan <- true
