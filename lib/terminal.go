@@ -235,24 +235,26 @@ func (a *TerminalOutput) draw() {
 
 ///
 
+// VerboseWriter writes to Out only if Verbose is set.
 type VerboseWriter struct {
-	out     io.Writer
-	verbose bool
+	Out     io.Writer
+	Verbose bool
 }
 
 func (w *VerboseWriter) Write(buf []byte) (int, error) {
-	if w.verbose {
-		return w.out.Write(buf)
+	if w.Verbose {
+		return w.Out.Write(buf)
 	}
 	return len(buf), nil
 }
 
+// terminal is the internal structure behinde the Terminal interface.
 type terminal struct {
 	Name     string
 	Status   string // Current status of the process
 	Info     string // additional info of the status
 	Progress int    // progress bar from 0 - 100 or negative for a spinner
-	Visible  bool
+	Visible  bool   // Is a statusbar visible
 
 	out     *PrefixedWriter
 	err     *PrefixedWriter
@@ -262,7 +264,7 @@ type terminal struct {
 	startTime time.Time
 }
 
-//
+// RegisterTerminal registers an interface to outputting
 func RegisterTerminal(name string, visible bool) Terminal {
 	prefix := fmt.Sprintf("[%s%s%s] ", ansi.ColorCode("default+hb"), name, ansi.Reset)
 	var ret = terminal{
