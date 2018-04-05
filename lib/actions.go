@@ -302,6 +302,9 @@ type ExecAction struct {
 	Succeeded []string
 	Failed    []string
 
+	CoolDown time.Duration
+	prevrun  time.Time
+
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
 
@@ -310,7 +313,8 @@ type ExecAction struct {
 
 func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
-		Args: args,
+		Args:     args,
+		CoolDown: 3000 * time.Millisecond,
 	}
 	ret.statusVisible = true
 	return ret
@@ -321,6 +325,7 @@ func (a *ExecAction) Run() error {
 	a.wg.Add(1)
 	defer a.wg.Done()
 
+	starttime := time.Now()
 	term := a.Terminal()
 
 	a.cmd = exec.Command(a.Args[0], a.Args[1:]...)
@@ -354,6 +359,13 @@ func (a *ExecAction) Run() error {
 		term.SetStatus(statusFail, info)
 	}
 	a.cmd = nil
+
+	runtime := time.Since(starttime)
+	if runtime < a.CoolDown {
+		fmt.Fprintln(a.Terminal().Verbose(), "Waiting for cooldown:",
+			a.CoolDown-runtime)
+		time.Sleep(a.CoolDown - runtime)
+	}
 	return err
 }
 

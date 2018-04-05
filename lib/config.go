@@ -41,6 +41,21 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		return nil, err
 	}
 
+	hasProperDuration := func(sect *ini.Section, key string) error {
+		if sect.HasKey(key) {
+			var d time.Duration
+			var zero time.Duration
+			d, err = sect.Key(key).Duration()
+			if err != nil || d < zero {
+
+				err = fmt.Errorf("Section \"%s\": Given hysteresis should be a non-negative Duration",
+					sect.Name())
+				return err
+			}
+		}
+		return nil
+	}
+
 	for _, sect := range fp.Sections() {
 		if sect.Name() == ini.DEFAULT_SECTION {
 			continue
@@ -68,17 +83,15 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if sect.HasKey("file") {
-			key := "hysteresis"
-			if sect.HasKey(key) {
-				var d time.Duration
-				var zero time.Duration
-				d, err = sect.Key(key).Duration()
-				if err != nil || d < zero {
-
-					err = fmt.Errorf("Section \"%s\": Given hysteresis should be a non-negative Duration",
-						sect.Name())
-					goto fail
-				}
+			err = hasProperDuration(sect, "hysteresis")
+			if err != nil {
+				goto fail
+			}
+		}
+		if sect.HasKey("exec") || sect.HasKey("daemon") {
+			err = hasProperDuration(sect, "cooldown")
+			if err != nil {
+				goto fail
 			}
 		}
 	}
@@ -100,6 +113,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			}
 			key := sect.Key(keyname)
 			a := NewExecAction(splitWsQuote(key.String())...)
+			a.CoolDown = sect.Key("cooldown").MustDuration(a.CoolDown)
 			a.Daemon = daemon
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())
