@@ -49,8 +49,8 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			d, err = sect.Key(key).Duration()
 			if err != nil || d < zero {
 
-				err = fmt.Errorf("Section \"%s\": Given hysteresis should be a non-negative Duration",
-					sect.Name())
+				err = fmt.Errorf("Section \"%s\": Given %s should be a non-negative Duration",
+					sect.Name(), key)
 				return err
 			}
 		}
