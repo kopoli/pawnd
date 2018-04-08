@@ -114,7 +114,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			}
 			key := sect.Key(keyname)
 			a := NewExecAction(splitWsQuote(key.String())...)
-			a.CoolDown = sect.Key("cooldown").MustDuration(a.CoolDown)
+			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
 			a.Daemon = daemon
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())

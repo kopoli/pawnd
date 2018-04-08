@@ -302,7 +302,7 @@ type ExecAction struct {
 	Succeeded []string
 	Failed    []string
 
-	CoolDown time.Duration
+	Cooldown time.Duration
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
@@ -313,7 +313,7 @@ type ExecAction struct {
 func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
 		Args:     args,
-		CoolDown: 3000 * time.Millisecond,
+		Cooldown: 3000 * time.Millisecond,
 	}
 	ret.statusVisible = true
 	return ret
@@ -360,10 +360,10 @@ func (a *ExecAction) Run() error {
 	a.cmd = nil
 
 	runtime := time.Since(starttime)
-	if runtime < a.CoolDown {
+	if runtime < a.Cooldown {
 		fmt.Fprintln(a.Terminal().Verbose(), "Waiting for cooldown:",
-			a.CoolDown-runtime)
-		time.Sleep(a.CoolDown - runtime)
+			a.Cooldown-runtime)
+		time.Sleep(a.Cooldown - runtime)
 	}
 	return err
 }
