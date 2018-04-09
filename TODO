@@ -1,0 +1,5 @@
+- Cron-triggering
+- Exec/daemon "started" triggering
+- Exec/daemon timeout duration
+ - "timeouted" triggering
+- "Visible" option for exec/daemon -actions
