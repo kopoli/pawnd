@@ -77,7 +77,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if count != 1 {
-			err = fmt.Errorf("Section \"%s\": A secion should have exactly one of: %s",
+			err = fmt.Errorf("Section \"%s\": A section should have exactly one of: %s",
 				sect.Name(),
 				strings.Join(types, ", "))
 			goto fail
@@ -88,8 +88,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			if err != nil {
 				goto fail
 			}
-		}
-		if sect.HasKey("exec") || sect.HasKey("daemon") {
+		} else if sect.HasKey("exec") || sect.HasKey("daemon") {
 			err = hasProperDuration(sect, "cooldown")
 			if err != nil {
 				goto fail
