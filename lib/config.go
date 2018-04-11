@@ -69,7 +69,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		count := 0
-		types := []string{"daemon", "exec", "file"}
+		types := []string{"daemon", "exec", "file", "cron"}
 		for i := range types {
 			if sect.HasKey(types[i]) {
 				count++
@@ -91,6 +91,11 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 		if sect.HasKey("exec") || sect.HasKey("daemon") {
 			err = hasProperDuration(sect, "cooldown")
+			if err != nil {
+				goto fail
+			}
+		} else if sect.HasKey("cron") {
+			err = CheckCronSpec(sect.Key("cron").String())
 			if err != nil {
 				goto fail
 			}
@@ -131,6 +136,12 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			if err == nil {
 				a.Changed = splitWsQuote(sect.Key("changed").Value())
 				a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
+				bus.Register(ActionName(sect.Name()), a)
+			}
+		} else if sect.HasKey("cron") {
+			a, err := NewCronAction(sect.Key("cron").String())
+			if err == nil {
+				a.Triggered = splitWsQuote(sect.Key("triggered").Value())
 				bus.Register(ActionName(sect.Name()), a)
 			}
 		}

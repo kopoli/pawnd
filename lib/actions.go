@@ -14,6 +14,7 @@ import (
 
 	util "github.com/kopoli/go-util"
 	zglob "github.com/mattn/go-zglob"
+	"github.com/robfig/cron"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
@@ -389,6 +390,70 @@ func (a *ExecAction) Receive(from, message string) {
 		a.Kill()
 	}
 }
+
+///
+
+type CronAction struct {
+	spec     string
+	sched    cron.Schedule
+	termchan chan bool
+
+	Triggered []string
+	BaseAction
+}
+
+func CheckCronSpec(spec string) error {
+	_, err := cron.Parse(spec)
+	return err
+}
+
+func NewCronAction(spec string) (*CronAction, error) {
+	sched, err := cron.Parse(spec)
+	if err != nil {
+		return nil, err
+	}
+	var ret = &CronAction{
+		spec:     spec,
+		sched:    sched,
+		termchan: make(chan bool),
+	}
+
+	trigtimer := time.NewTimer(0)
+	stopTimer(trigtimer)
+
+	resetTimer := func() {
+		next := sched.Next(time.Now())
+		fmt.Fprintln(ret.Terminal().Verbose(), "Next:", next.String())
+		dur := time.Until(next)
+		stopTimer(trigtimer)
+		trigtimer.Reset(dur)
+	}
+
+	go func() {
+		resetTimer()
+	loop:
+		for {
+			select {
+			case <-trigtimer.C:
+				ret.trigger(ret.Triggered)
+				resetTimer()
+			case <-ret.termchan:
+				break loop
+			}
+		}
+	}()
+
+	return ret, nil
+}
+
+func (a *CronAction) Receive(from, message string) {
+	switch message {
+	case MsgTerm:
+		a.termchan <- true
+	}
+}
+
+///
 
 func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
