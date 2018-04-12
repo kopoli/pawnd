@@ -73,14 +73,14 @@ type BaseAction struct {
 	name          string
 	bus           *EventBus
 	term          Terminal
-	statusVisible bool
+	Visible bool
 }
 
 func (a *BaseAction) Identify(name string, eb *EventBus) {
 	a.name = name
 	a.bus = eb
 	name = strings.TrimPrefix(name, "act:")
-	a.term = RegisterTerminal(name, a.statusVisible)
+	a.term = RegisterTerminal(name, a.Visible)
 }
 
 func (a *BaseAction) Send(to, message string) {
@@ -316,7 +316,7 @@ func NewExecAction(args ...string) *ExecAction {
 		Args:     args,
 		Cooldown: 3000 * time.Millisecond,
 	}
-	ret.statusVisible = true
+	ret.Visible = true
 	return ret
 
 }

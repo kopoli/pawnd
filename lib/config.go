@@ -122,6 +122,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a.Daemon = daemon
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())
+			a.Visible = sect.Key("visible").MustBool(true)
 
 			bus.Register(ActionName(sect.Name()), a)
 
