@@ -370,10 +370,12 @@ func (a *ExecAction) Run() error {
 }
 
 func (a *ExecAction) Kill() error {
+	var err error
 	if a.cmd != nil && a.cmd.Process != nil {
-		return a.cmd.Process.Kill()
+		err = a.cmd.Process.Kill()
+		fmt.Fprintln(a.Terminal().Verbose(), "Terminated process")
 	}
-	return nil
+	return err
 }
 
 func (a *ExecAction) Receive(from, message string) {
@@ -386,7 +388,6 @@ func (a *ExecAction) Receive(from, message string) {
 		a.wg.Wait()
 		a.Run()
 	case MsgTerm:
-		fmt.Fprintln(a.Terminal().Verbose(), "Terminating command!")
 		a.Kill()
 	}
 }
