@@ -93,6 +93,10 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			if err != nil {
 				goto fail
 			}
+			err = hasProperDuration(sect, "timeout")
+			if err != nil {
+				goto fail
+			}
 		} else if sect.HasKey("cron") {
 			err = CheckCronSpec(sect.Key("cron").String())
 			if err != nil {
@@ -119,6 +123,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			key := sect.Key(keyname)
 			a := NewExecAction(splitWsQuote(key.String())...)
 			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
+			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
 			a.Daemon = daemon
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())

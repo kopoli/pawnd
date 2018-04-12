@@ -304,9 +304,12 @@ type ExecAction struct {
 	Failed    []string
 
 	Cooldown time.Duration
+	Timeout time.Duration
 
 	cmd *exec.Cmd
 	wg  sync.WaitGroup
+	termchan chan bool
+	timeoutTimer *time.Timer
 
 	BaseAction
 }
@@ -315,8 +318,25 @@ func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
 		Args:     args,
 		Cooldown: 3000 * time.Millisecond,
+		termchan: make(chan bool),
+		timeoutTimer: time.NewTimer(0),
 	}
+	stopTimer(ret.timeoutTimer)
 	ret.Visible = true
+
+	go func() {
+	loop:
+		for {
+			select {
+			case <-ret.timeoutTimer.C:
+				fmt.Fprintln(ret.Terminal().Verbose(), "Timed out")
+				ret.Kill()
+			case <-ret.termchan:
+				ret.Kill()
+				break loop
+			}
+		}
+	}()
 	return ret
 
 }
@@ -328,6 +348,10 @@ func (a *ExecAction) Run() error {
 	starttime := time.Now()
 	term := a.Terminal()
 
+	if a.Timeout != 0 {
+		a.timeoutTimer.Reset(a.Timeout)
+		defer stopTimer(a.timeoutTimer)
+	}
 	a.cmd = exec.Command(a.Args[0], a.Args[1:]...)
 	a.cmd.Stdout = term.Stdout()
 	a.cmd.Stderr = term.Stderr()
@@ -388,7 +412,7 @@ func (a *ExecAction) Receive(from, message string) {
 		a.wg.Wait()
 		a.Run()
 	case MsgTerm:
-		a.Kill()
+		a.termchan <- true
 	}
 }
 
