@@ -70,9 +70,9 @@ func ActionName(name string) string {
 }
 
 type BaseAction struct {
-	name          string
-	bus           *EventBus
-	term          Terminal
+	name    string
+	bus     *EventBus
+	term    Terminal
 	Visible bool
 }
 
