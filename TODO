@@ -1,7 +1,9 @@
 -*- org -*-
 
+- command line argument --init to start commands as with 'init'
+- cli -c to -f -flag.
 - +Cron-triggering+
 - Exec/daemon "started" triggering
-- Exec/daemon timeout duration
- - "timeouted" triggering
+- +Exec/daemon timeout duration+
+ - +"timeouted" triggering+
 - +"Visible" option for exec/daemon -actions+
