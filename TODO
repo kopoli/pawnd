@@ -1,5 +1,6 @@
 -*- org -*-
 
+- +Updating the UI when startup is done.+
 - command line argument --init to start commands as with 'init'
 - cli -c to -f -flag.
 - +Cron-triggering+
