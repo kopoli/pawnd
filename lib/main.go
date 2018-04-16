@@ -24,6 +24,7 @@ func Main(opts util.Options) error {
 		return err
 	}
 
+	ta.Draw()
 	eb.Run()
 	ta.Stop()
 	return nil

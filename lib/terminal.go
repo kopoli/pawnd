@@ -233,6 +233,10 @@ func (a *TerminalOutput) draw() {
 	tmp.WriteTo(a.out)
 }
 
+func (t *TerminalOutput) Draw() {
+	t.readychan <- true
+}
+
 ///
 
 // VerboseWriter writes to Out only if Verbose is set.
