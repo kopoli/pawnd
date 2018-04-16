@@ -84,17 +84,15 @@ func NewEventBus() *EventBus {
 	loop:
 		for msg := range ret.msgchan {
 			ret.mutex.Lock()
-			if msg.Contents != MsgTerm {
-				for k := range ret.links {
-					if glob.Glob(msg.To, k) {
-						go ret.links[k].Receive(msg.From, msg.Contents)
-					}
+			isterm := msg.Contents == MsgTerm
+			for k := range ret.links {
+				if !glob.Glob(msg.To, k) {
+					continue
 				}
-			} else {
-				for k := range ret.links {
-					if glob.Glob(msg.To, k) {
-						ret.links[k].Receive(msg.From, msg.Contents)
-					}
+				if !isterm {
+					go ret.links[k].Receive(msg.From, msg.Contents)
+				} else {
+					ret.links[k].Receive(msg.From, msg.Contents)
 				}
 			}
 			ret.mutex.Unlock()
