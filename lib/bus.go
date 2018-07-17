@@ -54,6 +54,8 @@ func (eb *EventBus) Register(name string, link BusLink) error {
 
 	link.Identify(name, eb)
 
+	eb.wg.Add(1)
+
 	return nil
 }
 
@@ -71,6 +73,12 @@ func (eb *EventBus) Send(from, to, message string) {
 func (eb *EventBus) Run() {
 	eb.Send("", ToAll, MsgInit)
 	eb.wg.Wait()
+}
+
+// Action notifies that it has stopped. This is for waiting for all actions
+// when terminating.
+func (eb *EventBus) LinkStopped() {
+	eb.wg.Done()
 }
 
 func NewEventBus() *EventBus {
@@ -96,7 +104,7 @@ func NewEventBus() *EventBus {
 				}
 			}
 			ret.mutex.Unlock()
-			if msg.Contents == MsgTerm {
+			if isterm {
 				break loop
 			}
 		}

@@ -246,6 +246,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 				break loop
 			}
 		}
+		ret.bus.LinkStopped()
 	}()
 
 	return &ret, err
@@ -268,7 +269,7 @@ type SignalAction struct {
 
 func NewSignalAction(sig os.Signal) *SignalAction {
 	var ret = SignalAction{
-		sigchan:  make(chan os.Signal),
+		sigchan:  make(chan os.Signal, 1),
 		termchan: make(chan bool),
 	}
 
@@ -278,11 +279,12 @@ func NewSignalAction(sig os.Signal) *SignalAction {
 		for {
 			select {
 			case <-ret.sigchan:
-				ret.Send("*", MsgTerm)
+				ret.Send(ToAll, MsgTerm)
 			case <-ret.termchan:
 				break loop
 			}
 		}
+		ret.bus.LinkStopped()
 	}()
 	return &ret
 }
@@ -304,11 +306,11 @@ type ExecAction struct {
 	Failed    []string
 
 	Cooldown time.Duration
-	Timeout time.Duration
+	Timeout  time.Duration
 
-	cmd *exec.Cmd
-	wg  sync.WaitGroup
-	termchan chan bool
+	cmd          *exec.Cmd
+	wg           sync.WaitGroup
+	termchan     chan bool
 	timeoutTimer *time.Timer
 
 	BaseAction
@@ -316,9 +318,9 @@ type ExecAction struct {
 
 func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
-		Args:     args,
-		Cooldown: 3000 * time.Millisecond,
-		termchan: make(chan bool),
+		Args:         args,
+		Cooldown:     3000 * time.Millisecond,
+		termchan:     make(chan bool),
 		timeoutTimer: time.NewTimer(0),
 	}
 	stopTimer(ret.timeoutTimer)
@@ -336,6 +338,7 @@ func NewExecAction(args ...string) *ExecAction {
 				break loop
 			}
 		}
+		ret.bus.LinkStopped()
 	}()
 	return ret
 
@@ -466,6 +469,7 @@ func NewCronAction(spec string) (*CronAction, error) {
 				break loop
 			}
 		}
+		ret.bus.LinkStopped()
 	}()
 
 	return ret, nil
