@@ -17,14 +17,12 @@ var (
 	version          = "Undefined"
 	timestamp        = "Undefined"
 	progVersion      = majorVersion + "-" + version
-	exitValue    int = 0
 )
 
 func fault(err error, message string, arg ...string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
-		exitValue = 1
-		os.Exit(exitValue)
+		os.Exit(1)
 	}
 }
 
@@ -66,16 +64,17 @@ func main() {
 
 	if opts.IsSet("demo-mode") {
 		pawnd.ActionDemo(opts)
-		exitValue = 25
-		return
+		os.Exit(25)
 	}
 
 	if opts.IsSet("generate-templates") {
 		err = pawnd.GenerateTemplates(opts)
 		fault(err, "Generating templates failed")
+		os.Exit(0)
 		return
 	}
 
 	err = pawnd.Main(opts)
 	fault(err, "Running pawnd failed")
+	os.Exit(0)
 }
