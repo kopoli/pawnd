@@ -77,7 +77,7 @@ func (eb *EventBus) Run() {
 
 // Action notifies that it has stopped. This is for waiting for all actions
 // when terminating.
-func (eb *EventBus) LinkStopped() {
+func (eb *EventBus) LinkStopped(name string) {
 	eb.wg.Done()
 }
 

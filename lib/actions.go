@@ -246,7 +246,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 				break loop
 			}
 		}
-		ret.bus.LinkStopped()
+		ret.bus.LinkStopped(ret.name)
 	}()
 
 	return &ret, err
@@ -284,7 +284,7 @@ func NewSignalAction(sig os.Signal) *SignalAction {
 				break loop
 			}
 		}
-		ret.bus.LinkStopped()
+		ret.bus.LinkStopped(ret.name)
 	}()
 	return &ret
 }
@@ -338,7 +338,7 @@ func NewExecAction(args ...string) *ExecAction {
 				break loop
 			}
 		}
-		ret.bus.LinkStopped()
+		ret.bus.LinkStopped(ret.name)
 	}()
 	return ret
 
@@ -469,7 +469,7 @@ func NewCronAction(spec string) (*CronAction, error) {
 				break loop
 			}
 		}
-		ret.bus.LinkStopped()
+		ret.bus.LinkStopped(ret.name)
 	}()
 
 	return ret, nil
