@@ -136,10 +136,13 @@ func GetTerminal(name string) Terminal {
 // updateProgress updates the progress-bars and spinners
 func (a *TerminalOutput) updateSpinners() {
 	for _, t := range a.terminals {
-		if t.Progress < 0 {
-			t.Progress = -((-t.Progress + 1) % (len(spinner) + 1))
-			if t.Progress == 0 {
-				t.Progress = -1
+		t.statusMutex.Lock()
+		progress := t.Progress
+		t.statusMutex.Unlock()
+		if progress < 0 {
+			progress = -((-progress + 1) % (len(spinner) + 1))
+			if progress == 0 {
+				progress = -1
 			}
 		}
 	}
@@ -178,16 +181,22 @@ func drawProgressBar(width int, progress int, out *bytes.Buffer) {
 }
 
 func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
-	badge := formatStatus(t.Status, t.Name)
+	t.statusMutex.Lock()
+	status := t.Status
+	info := t.Info
+	progress := t.Progress
+	t.statusMutex.Unlock()
+
+	badge := formatStatus(status, t.Name)
 	out.WriteString(badge)
 	maxwidth -= 4 + 4 + len(t.Name)
 	switch {
-	case t.Progress == 100 && t.Info != "":
-		fmt.Fprintf(out, "%s", t.Info)
-	case t.Progress >= 0:
-		drawProgressBar(maxwidth, t.Progress, out)
+	case progress == 100 && info != "":
+		fmt.Fprintf(out, "%s", info)
+	case progress >= 0:
+		drawProgressBar(maxwidth, progress, out)
 	default:
-		out.WriteByte(spinner[(t.Progress*-1)%len(spinner)])
+		out.WriteByte(spinner[(progress*-1)%len(spinner)])
 	}
 }
 
@@ -260,23 +269,26 @@ type terminal struct {
 	Progress int    // progress bar from 0 - 100 or negative for a spinner
 	Visible  bool   // Is a statusbar visible
 
+	progressStopChan chan bool
+	statusMutex      sync.Mutex
+
 	out     *PrefixedWriter
 	err     *PrefixedWriter
 	verbose *VerboseWriter
 
 	runtime   time.Duration
 	startTime time.Time
-	runtimer  *time.Timer
 }
 
 // RegisterTerminal registers an interface to outputting
 func RegisterTerminal(name string, visible bool) Terminal {
 	prefix := fmt.Sprintf("[%s%s%s] ", ansi.ColorCode("default+hb"), name, ansi.Reset)
 	var ret = terminal{
-		Name:    name,
-		Visible: visible,
-		out:     NewPrefixedWriter(prefix, termOutput.buffer),
-		err:     NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer),
+		Name:             name,
+		Visible:          visible,
+		out:              NewPrefixedWriter(prefix, termOutput.buffer),
+		err:              NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer),
+		progressStopChan: make(chan bool),
 	}
 	ret.verbose = &VerboseWriter{ret.out, termOutput.Verbose}
 	termOutput.terminals = append(termOutput.terminals, &ret)
@@ -296,29 +308,48 @@ func (t *terminal) Verbose() io.Writer {
 }
 
 func (t *terminal) SetStatus(status string, info string) {
-	t.Status = status
-	t.Info = info
+	var progress int
+
+	drainChan := func(ch chan bool) {
+		select {
+		case <-ch:
+		default:
+		}
+	}
 
 	switch status {
 	case statusRun:
 		t.startTime = time.Now()
-		t.Progress = 0
+		progress = 0
 		if info == infoDaemon {
-			t.Progress = -1
+			progress = -1
 		} else {
 			redrawtime := time.Millisecond * 200
-			t.runtimer = time.NewTimer(redrawtime)
 			go func() {
-				for range t.runtimer.C {
-					t.runtimer.Reset(redrawtime)
+				drainChan(t.progressStopChan)
+				runtimer := time.NewTimer(redrawtime)
+			loop:
+				for {
+					select {
+					case <-runtimer.C:
+						var progress int
+						runtimer.Reset(redrawtime)
 
-					curduration := time.Since(t.startTime)
-					if curduration >= t.runtime {
-						t.Progress = 100
-					} else {
-						t.Progress = int((curduration * 100 / t.runtime))
+						curduration := time.Since(t.startTime)
+						if curduration >= t.runtime {
+							progress = 100
+						} else {
+							progress = int((curduration * 100 / t.runtime))
+						}
+						t.statusMutex.Lock()
+						t.Progress = progress
+						t.statusMutex.Unlock()
+
+						termOutput.readychan <- true
+					case <-t.progressStopChan:
+						stopTimer(runtimer)
+						break loop
 					}
-					termOutput.readychan <- true
 				}
 			}()
 		}
@@ -326,11 +357,19 @@ func (t *terminal) SetStatus(status string, info string) {
 		fallthrough
 	case statusOk:
 		t.runtime = time.Since(t.startTime)
-		t.Progress = 100
-		if t.runtimer != nil {
-			stopTimer(t.runtimer)
+		progress = 100
+
+		select {
+		case t.progressStopChan <- true:
+		default:
 		}
 	}
+
+	t.statusMutex.Lock()
+	t.Status = status
+	t.Info = info
+	t.Progress = progress
+	t.statusMutex.Unlock()
 
 	termOutput.readychan <- true
 }
