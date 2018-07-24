@@ -382,6 +382,8 @@ type PrefixedWriter struct {
 	Out       io.Writer     // Write everything to this writer.
 	TimeStamp bool          // Add timestamps to output
 	buf       *bytes.Buffer // buffer to house incomplete lines
+
+	mutex   sync.Mutex
 }
 
 // NewPrefixedWriter create a PrefixedWriter with given prefix and write
@@ -401,11 +403,13 @@ func NewPrefixedWriter(prefix string, out io.Writer) *PrefixedWriter {
 // data is written to an internal buffer which is flushed the next time data
 // with newline is given.
 func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
-
 	// If no bytes to write
 	if len(buf) == 0 {
 		return 0, nil
 	}
+
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	n = len(buf)
 
