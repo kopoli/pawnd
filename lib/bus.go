@@ -44,6 +44,9 @@ type BusLink interface {
 
 	// Registering the EventBus to the BusLink
 	Identify(name string, bus *EventBus)
+
+	// Start the BusLink specific goroutine
+	Run()
 }
 
 // Register a node with given name
@@ -71,6 +74,10 @@ func (eb *EventBus) Send(from, to, message string) {
 
 // Run until terminated
 func (eb *EventBus) Run() {
+	for k := range eb.links {
+		eb.links[k].Run()
+	}
+
 	eb.Send("", ToAll, MsgInit)
 	eb.wg.Wait()
 }

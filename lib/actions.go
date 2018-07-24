@@ -120,6 +120,9 @@ func (a *InitAction) Receive(from, message string) {
 	}
 }
 
+func (a *InitAction) Run() {
+}
+
 ///
 
 type FileAction struct {
@@ -194,60 +197,17 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 		return nil, err
 	}
 
-	matchPattern := func(file string) bool {
-
-		// check if a dangling symlink
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			return false
-		}
-
-		file = filepath.Base(file)
-		for _, p := range ret.Patterns {
-			m, er := path.Match(filepath.Base(p), file)
-			if m && er == nil {
-				fmt.Fprintf(ret.Terminal().Verbose(), "File \"%s\" changed\n", file)
-				return true
-			}
-		}
-		return false
+	files := getFileList(ret.Patterns)
+	if len(files) == 0 {
+		return nil, fmt.Errorf("No watched files")
 	}
 
-	go func() {
-		defer ret.watch.Close()
-
-		threshold := time.NewTimer(0)
-		stopTimer(threshold)
-
-		files := getFileList(ret.Patterns)
-		stderr := ret.Terminal().Stderr()
-		if len(files) == 0 {
-			fmt.Fprintln(stderr, "Error: No watched files")
+	for i := range files {
+		err := ret.watch.Add(files[i])
+		if err != nil {
+			return nil, fmt.Errorf("Could not watch file %s", files[i])
 		}
-		for i := range files {
-			err := ret.watch.Add(files[i])
-			if err != nil {
-				fmt.Fprintln(stderr, "Error: Could not watch", files[i])
-			}
-		}
-
-	loop:
-		for {
-			select {
-			case <-threshold.C:
-				ret.trigger(ret.Changed)
-			case event := <-ret.watch.Events:
-				if matchPattern(event.Name) {
-					stopTimer(threshold)
-					threshold.Reset(ret.Hysteresis)
-				}
-			case err := <-ret.watch.Errors:
-				fmt.Fprintln(ret.Terminal().Stderr(), "Error Received:", err)
-			case <-ret.termchan:
-				break loop
-			}
-		}
-		ret.bus.LinkStopped(ret.name)
-	}()
+	}
 
 	return &ret, err
 }
@@ -259,11 +219,57 @@ func (a *FileAction) Receive(from, message string) {
 	}
 }
 
+func (a *FileAction) Run() {
+	matchPattern := func(file string) bool {
+
+		// check if a dangling symlink
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return false
+		}
+
+		file = filepath.Base(file)
+		for _, p := range a.Patterns {
+			m, er := path.Match(filepath.Base(p), file)
+			if m && er == nil {
+				fmt.Fprintf(a.Terminal().Verbose(), "File \"%s\" changed\n", file)
+				return true
+			}
+		}
+		return false
+	}
+
+	go func() {
+		defer a.watch.Close()
+
+		threshold := time.NewTimer(0)
+		stopTimer(threshold)
+
+	loop:
+		for {
+			select {
+			case <-threshold.C:
+				a.trigger(a.Changed)
+			case event := <-a.watch.Events:
+				if matchPattern(event.Name) {
+					stopTimer(threshold)
+					threshold.Reset(a.Hysteresis)
+				}
+			case err := <-a.watch.Errors:
+				fmt.Fprintln(a.Terminal().Stderr(), "Error Received:", err)
+			case <-a.termchan:
+				break loop
+			}
+		}
+		a.bus.LinkStopped(a.name)
+	}()
+}
+
 ///
 
 type SignalAction struct {
 	sigchan  chan os.Signal
 	termchan chan bool
+	sig      os.Signal
 	BaseAction
 }
 
@@ -271,21 +277,9 @@ func NewSignalAction(sig os.Signal) *SignalAction {
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
 		termchan: make(chan bool),
+		sig:      sig,
 	}
 
-	signal.Notify(ret.sigchan, sig)
-	go func() {
-	loop:
-		for {
-			select {
-			case <-ret.sigchan:
-				ret.Send(ToAll, MsgTerm)
-			case <-ret.termchan:
-				break loop
-			}
-		}
-		ret.bus.LinkStopped(ret.name)
-	}()
 	return &ret
 }
 
@@ -294,6 +288,22 @@ func (a *SignalAction) Receive(from, message string) {
 	case MsgTerm:
 		a.termchan <- true
 	}
+}
+
+func (a *SignalAction) Run() {
+	signal.Notify(a.sigchan, a.sig)
+	go func() {
+	loop:
+		for {
+			select {
+			case <-a.sigchan:
+				a.Send(ToAll, MsgTerm)
+			case <-a.termchan:
+				break loop
+			}
+		}
+		a.bus.LinkStopped(a.name)
+	}()
 }
 
 ///
@@ -310,6 +320,7 @@ type ExecAction struct {
 
 	cmd          *exec.Cmd
 	wg           sync.WaitGroup
+	startchan    chan bool
 	termchan     chan bool
 	timeoutTimer *time.Timer
 
@@ -320,31 +331,39 @@ func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
 		Args:         args,
 		Cooldown:     3000 * time.Millisecond,
+		startchan:    make(chan bool),
 		termchan:     make(chan bool),
 		timeoutTimer: time.NewTimer(0),
 	}
 	stopTimer(ret.timeoutTimer)
 	ret.Visible = true
 
+	return ret
+}
+
+func (a *ExecAction) Run() {
 	go func() {
 	loop:
 		for {
 			select {
-			case <-ret.timeoutTimer.C:
-				fmt.Fprintln(ret.Terminal().Verbose(), "Timed out")
-				ret.Kill()
-			case <-ret.termchan:
-				ret.Kill()
+			case <-a.timeoutTimer.C:
+				fmt.Fprintln(a.Terminal().Verbose(), "Timed out")
+				a.Kill()
+			case <-a.startchan:
+				if a.Daemon {
+					_ = a.Kill()
+				}
+				a.RunCommand()
+			case <-a.termchan:
+				a.Kill()
 				break loop
 			}
 		}
-		ret.bus.LinkStopped(ret.name)
+		a.bus.LinkStopped(a.name)
 	}()
-	return ret
-
 }
 
-func (a *ExecAction) Run() error {
+func (a *ExecAction) RunCommand() error {
 	a.wg.Add(1)
 	defer a.wg.Done()
 
@@ -409,12 +428,15 @@ func (a *ExecAction) Receive(from, message string) {
 	switch message {
 	case MsgTrig:
 		fmt.Fprintln(a.Terminal().Verbose(), "Running command:", a.Args)
-		if a.Daemon {
-			_ = a.Kill()
+
+		// If not a daemon, wait until completion
+		if !a.Daemon {
+			a.wg.Wait()
 		}
-		a.wg.Wait()
-		a.Run()
+		a.startchan <- true
+
 	case MsgTerm:
+		fmt.Fprintln(a.Terminal().Stderr(), "Received terminate!")
 		a.termchan <- true
 	}
 }
@@ -446,12 +468,23 @@ func NewCronAction(spec string) (*CronAction, error) {
 		termchan: make(chan bool),
 	}
 
+	return ret, nil
+}
+
+func (a *CronAction) Receive(from, message string) {
+	switch message {
+	case MsgTerm:
+		a.termchan <- true
+	}
+}
+
+func (a *CronAction) Run() {
 	trigtimer := time.NewTimer(0)
 	stopTimer(trigtimer)
 
 	resetTimer := func() {
-		next := sched.Next(time.Now())
-		fmt.Fprintln(ret.Terminal().Verbose(), "Next:", next.String())
+		next := a.sched.Next(time.Now())
+		fmt.Fprintln(a.Terminal().Verbose(), "Next:", next.String())
 		dur := time.Until(next)
 		stopTimer(trigtimer)
 		trigtimer.Reset(dur)
@@ -463,23 +496,14 @@ func NewCronAction(spec string) (*CronAction, error) {
 		for {
 			select {
 			case <-trigtimer.C:
-				ret.trigger(ret.Triggered)
+				a.trigger(a.Triggered)
 				resetTimer()
-			case <-ret.termchan:
+			case <-a.termchan:
 				break loop
 			}
 		}
-		ret.bus.LinkStopped(ret.name)
+		a.bus.LinkStopped(a.name)
 	}()
-
-	return ret, nil
-}
-
-func (a *CronAction) Receive(from, message string) {
-	switch message {
-	case MsgTerm:
-		a.termchan <- true
-	}
 }
 
 ///
