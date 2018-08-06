@@ -18,7 +18,7 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 
 	conffile := "Pawnfile"
 
-	optConfFile := app.StringOpt("c conf", opts.Get("configuration-file", conffile),
+	optConfFile := app.StringOpt("f file", opts.Get("configuration-file", conffile),
 		"File to read the configuration from")
 
 	optVerbose := app.BoolOpt("V verbose", false, "Verbose output")
@@ -60,7 +60,7 @@ func Cli(opts util.Options, argsin []string) (args []string, err error) {
 			argTemplates := cmd.StringsArg("TEMPLATE", nil, "The names of the templates")
 			optStdout := cmd.BoolOpt("c stdout", false, "Print generated to stdout.")
 			optOverwrite := cmd.BoolOpt("o overwrite", false, "Overwrite the file.")
-			optOutfile := cmd.StringOpt("conf", conffile, "File to generate.")
+			optOutfile := cmd.StringOpt("f file", conffile, "File to generate.")
 			cmd.Action = func() {
 				opts.Set("generate-templates", strings.Join(*argTemplates, " "))
 

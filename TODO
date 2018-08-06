@@ -2,7 +2,7 @@
 
 - +Updating the UI when startup is done.+
 - command line argument --init to start commands as with 'init'
-- cli -c to -f -flag.
+- +cli -c to -f -flag.+
 - +Cron-triggering+
 - Exec/daemon "started" triggering
 - +Exec/daemon timeout duration+
