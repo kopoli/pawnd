@@ -335,13 +335,13 @@ func (t *terminal) SetStatus(status string, info string) {
 						var progress int
 						runtimer.Reset(redrawtime)
 
+						t.statusMutex.Lock()
 						curduration := time.Since(t.startTime)
 						if curduration >= t.runtime {
 							progress = 100
 						} else {
 							progress = int((curduration * 100 / t.runtime))
 						}
-						t.statusMutex.Lock()
 						t.Progress = progress
 						t.statusMutex.Unlock()
 
@@ -356,7 +356,9 @@ func (t *terminal) SetStatus(status string, info string) {
 	case statusFail:
 		fallthrough
 	case statusOk:
+		t.statusMutex.Lock()
 		t.runtime = time.Since(t.startTime)
+		t.statusMutex.Unlock()
 		progress = 100
 
 		select {
