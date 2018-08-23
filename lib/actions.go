@@ -18,53 +18,6 @@ import (
 	fsnotify "gopkg.in/fsnotify.v1"
 )
 
-/*
-
-Format:
-
-;; Building:
-
-[name]
-file=*.go
-changed=build
-; removed=
-; added=
-
-[build]
-exec=go build
-
-
-;; Running a daemon
-
-init=godoc
-
-[godoc]
-daemon=godoc -http=:6060
-
-
-;; trigger chain
-
-[html changed]
-file=html/index.html
-changed=generate
-
-[source changed]
-file=*go
-changed=build
-
-[generate]
-exec=go generate
-succeeded=build
-
-[build]
-exec=go build
-succeeded=handledaemon
-
-[handledaemon]
-daemon=./daemond --foreground
-
-*/
-
 func ActionName(name string) string {
 	return fmt.Sprintf("act:%s", name)
 }
