@@ -29,6 +29,7 @@ func fault(err error, message string, arg ...string) {
 func main() {
 	opts := util.NewOptions()
 
+	opts.Set("program-real-name", "Pawnd")
 	opts.Set("program-name", os.Args[0])
 	opts.Set("program-version", progVersion)
 	opts.Set("program-timestamp", timestamp)
