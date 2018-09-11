@@ -420,7 +420,7 @@ type PrefixedWriter struct {
 	TimeStamp bool          // Add timestamps to output
 	buf       *bytes.Buffer // buffer to house incomplete lines
 
-	mutex   sync.Mutex
+	mutex sync.Mutex
 }
 
 // NewPrefixedWriter create a PrefixedWriter with given prefix and write
