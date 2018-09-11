@@ -298,6 +298,13 @@ func (a *SignalAction) Run() {
 			select {
 			case <-a.sigchan:
 				a.Send(ToAll, MsgTerm)
+
+				// Set a time limit to termination
+				time.AfterFunc(2 * time.Second, func() {
+					// Triggering this is a bug.
+					fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
+					os.Exit(2)
+				})
 			case <-a.termchan:
 				break loop
 			}
@@ -436,7 +443,7 @@ func (a *ExecAction) Receive(from, message string) {
 		a.startchan <- true
 
 	case MsgTerm:
-		fmt.Fprintln(a.Terminal().Stderr(), "Received terminate!")
+		fmt.Fprintln(a.Terminal().Verbose(), "Received terminate!")
 		a.termchan <- true
 	}
 }
