@@ -8,7 +8,7 @@ import (
 
 func Main(opts util.Options) error {
 	eb := NewEventBus()
-	ta := NewTerminalOutput()
+	ta := NewTerminalOutput(opts)
 	ta.Verbose = opts.IsSet("verbose")
 
 	sa := NewSignalAction(os.Interrupt)

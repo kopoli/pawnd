@@ -8,6 +8,7 @@ import (
 	"time"
 
 	cursor "github.com/ahmetalpbalkan/go-cursor"
+	util "github.com/kopoli/go-util"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
 )
@@ -61,6 +62,8 @@ type TerminalOutput struct {
 	terminals      []*terminal
 	Width          int
 	Verbose        bool
+	TitleStatus    string
+	ProgTitle      string
 
 	defaultTerm Terminal
 
@@ -70,7 +73,7 @@ type TerminalOutput struct {
 	initialized bool
 }
 
-func NewTerminalOutput() *TerminalOutput {
+func NewTerminalOutput(opts util.Options) *TerminalOutput {
 	if termOutput != nil {
 		return termOutput
 	}
@@ -82,6 +85,7 @@ func NewTerminalOutput() *TerminalOutput {
 		out:            colorable.NewColorableStdout(),
 		Width:          60,
 		Verbose:        false,
+		ProgTitle:      opts.Get("program-real-name", "pawnd"),
 		readychan:      readychan,
 		buffer: &termWriter{
 			ready: readychan,
@@ -180,7 +184,7 @@ func drawProgressBar(width int, progress int, out *bytes.Buffer) {
 	out.WriteByte(']')
 }
 
-func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
+func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) string {
 	t.statusMutex.Lock()
 	status := t.Status
 	info := t.Info
@@ -198,6 +202,28 @@ func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) {
 	default:
 		out.WriteByte(spinner[(progress*-1)%len(spinner)])
 	}
+
+	return status
+}
+
+func determineTitleStatus(wholeStatus, singleStatus string) string {
+
+	switch wholeStatus {
+
+	case statusRun:
+		fallthrough
+	case statusFail:
+		return wholeStatus
+	}
+
+	switch singleStatus {
+	case statusFail:
+		return singleStatus
+	case "":
+		return wholeStatus
+	}
+
+	return singleStatus
 }
 
 func (a *TerminalOutput) draw() {
@@ -232,12 +258,21 @@ func (a *TerminalOutput) draw() {
 	}
 	a.buffer.mutex.Unlock()
 
+	status := statusOk
 	// Print the status lines
 	for i := range a.terminals {
 		if a.terminals[i].Visible {
-			drawStatus(a.terminals[i], a.Width, tmp)
+			st := drawStatus(a.terminals[i], a.Width, tmp)
 			tmp.WriteByte('\n')
+
+			status = determineTitleStatus(status, st)
 		}
+	}
+
+	// Write the title if it has changed
+	if status != a.TitleStatus {
+		fmt.Fprintf(tmp, "\033]0;%s[%s]\007", a.ProgTitle, status)
+		a.TitleStatus = status
 	}
 	tmp.WriteTo(a.out)
 }

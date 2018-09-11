@@ -511,7 +511,7 @@ func (a *CronAction) Run() {
 func ActionDemo(opts util.Options) {
 	eb := NewEventBus()
 
-	ta := NewTerminalOutput()
+	ta := NewTerminalOutput(opts)
 
 	sa := NewSignalAction(os.Interrupt)
 	eb.Register("sighandler", sa)
