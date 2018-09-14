@@ -68,6 +68,13 @@ exec="/bin/sh -c 'sleep 2 && echo This fails 1>&2 && false'"
   - `daemon`: Similar to the command, but displays a spinner instead of a
     progress bar on the screen.
 	Can have `init` key which will run the command when `pawnd` starts.
+  - `signal`: When `pawnd` receives a signal, the commands in the list of
+    `triggered` key are run.
+    - The `sigusr1` and `sigusr2` signals are supported on UNIX. None on
+      Windows.
+  - `cron`: Run commands in the list of `triggered` with intervals defined in
+    cron-like manner. The spec for the cron can be found at:
+    https://godoc.org/github.com/robfig/cron
 
 ## License
 
