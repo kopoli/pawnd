@@ -1,8 +1,6 @@
 package pawnd
 
 import (
-	"os"
-
 	util "github.com/kopoli/go-util"
 )
 
@@ -11,7 +9,8 @@ func Main(opts util.Options) error {
 	ta := NewTerminalOutput(opts)
 	ta.Verbose = opts.IsSet("verbose")
 
-	sa := NewSignalAction(os.Interrupt)
+	sa, _ := NewSignalAction("interrupt")
+	sa.Terminator = true
 	eb.Register("sighandler", sa)
 
 	f, err := ValidateConfig(opts.Get("configuration-file", "Pawnfile"))

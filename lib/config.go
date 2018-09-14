@@ -69,7 +69,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		count := 0
-		types := []string{"daemon", "exec", "file", "cron"}
+		types := []string{"daemon", "exec", "file", "cron", "signal"}
 		for i := range types {
 			if sect.HasKey(types[i]) {
 				count++
@@ -99,6 +99,11 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			}
 		} else if sect.HasKey("cron") {
 			err = CheckCronSpec(sect.Key("cron").String())
+			if err != nil {
+				goto fail
+			}
+		} else if sect.HasKey("signal") {
+			err = CheckSignal(sect.Key("signal").String())
 			if err != nil {
 				goto fail
 			}
@@ -147,6 +152,12 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			}
 		} else if sect.HasKey("cron") {
 			a, err := NewCronAction(sect.Key("cron").String())
+			if err == nil {
+				a.Triggered = splitWsQuote(sect.Key("triggered").Value())
+				bus.Register(ActionName(sect.Name()), a)
+			}
+		} else if sect.HasKey("signal") {
+			a, err := NewSignalAction(sect.Key("signal").String())
 			if err == nil {
 				a.Triggered = splitWsQuote(sect.Key("triggered").Value())
 				bus.Register(ActionName(sect.Name()), a)

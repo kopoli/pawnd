@@ -266,21 +266,47 @@ func (a *FileAction) Run() {
 
 ///
 
+func CheckSignal(name string) error {
+	_, ok := SupportedSignals[name]
+	if !ok {
+		return fmt.Errorf("Signal name \"%s\" is not supported.", name)
+	}
+	return nil
+}
+
 type SignalAction struct {
 	sigchan  chan os.Signal
 	termchan chan bool
 	sig      os.Signal
+
+	Triggered []string
+
+	// If this signal should terminate the program
+	Terminator bool
+
 	BaseAction
 }
 
-func NewSignalAction(sig os.Signal) *SignalAction {
+func NewSignalAction(signame string) (*SignalAction, error) {
+	if signame != "interrupt" {
+		err := CheckSignal(signame)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
 		termchan: make(chan bool),
-		sig:      sig,
+	}
+	if signame == "interrupt" {
+		ret.sig = os.Interrupt
+	} else {
+		ret.sig = SupportedSignals[signame]
 	}
 
-	return &ret
+
+	return &ret, nil
 }
 
 func (a *SignalAction) Receive(from, message string) {
@@ -290,6 +316,18 @@ func (a *SignalAction) Receive(from, message string) {
 	}
 }
 
+func (a *SignalAction) terminate() {
+	fmt.Fprintln(a.Terminal().Verbose(), "Terminating due to signal.")
+	a.Send(ToAll, MsgTerm)
+
+	// Set a time limit to termination
+	time.AfterFunc(2*time.Second, func() {
+		// Triggering this is a bug.
+		fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
+		os.Exit(2)
+	})
+}
+
 func (a *SignalAction) Run() {
 	signal.Notify(a.sigchan, a.sig)
 	go func() {
@@ -297,14 +335,11 @@ func (a *SignalAction) Run() {
 		for {
 			select {
 			case <-a.sigchan:
-				a.Send(ToAll, MsgTerm)
-
-				// Set a time limit to termination
-				time.AfterFunc(2 * time.Second, func() {
-					// Triggering this is a bug.
-					fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
-					os.Exit(2)
-				})
+				if a.Terminator {
+					a.terminate()
+				} else {
+					a.trigger(a.Triggered)
+				}
 			case <-a.termchan:
 				break loop
 			}
@@ -520,7 +555,7 @@ func ActionDemo(opts util.Options) {
 
 	ta := NewTerminalOutput(opts)
 
-	sa := NewSignalAction(os.Interrupt)
+	sa, _ := NewSignalAction("interrupt")
 	eb.Register("sighandler", sa)
 
 	f, err := ValidateConfig("Testfile")
