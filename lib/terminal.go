@@ -186,14 +186,30 @@ func formatStatus(status, name string) string {
 }
 
 func drawProgressBar(width int, progress int, out *bytes.Buffer) {
+	// There must be space at least for: [=]
+	if width < 3 {
+		width = 3
+	}
+
+	if progress < 0 {
+		progress = 0
+	} else if progress > 100 {
+		progress = 100
+	}
+
+	width -= 2
+
+	fillwidth := int(math.Ceil(float64(width) * float64(progress) / 100))
+
 	out.WriteByte('[')
-	fillwidth := width * progress / 100
-	if progress >= 0 {
+	if fillwidth > 0 {
 		for i := 0; i < fillwidth-1; i++ {
 			out.WriteByte('=')
 		}
 		if progress < 100 {
 			out.WriteByte('>')
+		} else {
+			out.WriteByte('=')
 		}
 	}
 

@@ -2,6 +2,7 @@ package pawnd
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -42,6 +43,50 @@ func Test_PrefixedWriter(t *testing.T) {
 			p.buf.WriteTo(out)
 			if out.String() != tt.output {
 				t.Errorf("Unexpected output:\ndata:\ngot: [%v]\nexpected: [%v]",
+					out.String(), tt.output,
+				)
+				return
+			}
+		})
+	}
+}
+
+func Test_drawProgressBar(t *testing.T) {
+	tests := []struct {
+		width    int
+		progress int
+		output   string
+	}{
+		{2, 100, "[=]"},
+		{3, 100, "[=]"},
+		{4, 100, "[==]"},
+		{5, 100, "[===]"},
+
+		{2, 0,  "[-]"},
+		{2, 10, "[>]"},
+		{2, 50, "[>]"},
+		{2, 60, "[>]"},
+
+		{4,  0, "[--]"},
+		{4, 10, "[>-]"},
+		{4, 50, "[>-]"},
+		{4, 51, "[=>]"},
+		{4, 60, "[=>]"},
+		{4, 99, "[=>]"},
+
+		{5,  0, "[---]"},
+		{5, 10, "[>--]"},
+		{5, 34, "[=>-]"},
+		{5, 99, "[==>]"},
+	}
+	for _, tt := range tests {
+		name := fmt.Sprintf("Progressbar Width %d %d%%", tt.width, tt.progress)
+		t.Run(name, func(t *testing.T) {
+			out := &bytes.Buffer{}
+			drawProgressBar(tt.width, tt.progress, out)
+
+			if out.String() != tt.output {
+				t.Errorf("Unexpected output:\ndata:\ngot:      [%v]\nexpected: [%v]",
 					out.String(), tt.output,
 				)
 				return
