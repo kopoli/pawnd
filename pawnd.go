@@ -13,10 +13,9 @@ import (
 )
 
 var (
-	majorVersion     = "0"
 	version          = "Undefined"
 	timestamp        = "Undefined"
-	progVersion      = majorVersion + "-" + version
+	progVersion      = "" + version
 )
 
 func fault(err error, message string, arg ...string) {
