@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 	"time"
 
 	cursor "github.com/ahmetalpbalkan/go-cursor"
+	tsize "github.com/kopoli/go-terminal-size"
 	util "github.com/kopoli/go-util"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
@@ -94,6 +96,20 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 		termchan: make(chan bool),
 	}
 
+	sl, err := tsize.NewSizeListener()
+	if err != nil {
+		// Create a dummy channel
+		// sl.Change = make(chan tsize.Size, 1)
+		fmt.Println("Could not start terminal size listener!")
+	}
+
+	limit := 1
+
+	s, err := tsize.GetSize()
+	if err == nil {
+		ret.Width = s.Width - limit
+	}
+
 	go func() {
 		drawTimer := time.NewTimer(ret.updateInterval)
 	loop:
@@ -106,6 +122,9 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 				drawTimer.Reset(ret.updateInterval)
 			case <-ret.readychan:
 				ret.draw()
+			case s := <-sl.Change:
+				// data race condition ?
+				ret.Width = s.Width - limit
 			case <-ret.termchan:
 				break loop
 			}
