@@ -98,9 +98,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 
 	sl, err := tsize.NewSizeListener()
 	if err != nil {
-		// Create a dummy channel
-		// sl.Change = make(chan tsize.Size, 1)
-		fmt.Println("Could not start terminal size listener!")
+		fmt.Println("Could not start terminal size listener:", err)
 	}
 
 	limit := 4
