@@ -348,7 +348,10 @@ func (a *ExecAction) Run() {
 				if a.Daemon {
 					_ = a.Kill()
 				}
-				a.RunCommand()
+				err := a.RunCommand()
+				if err != nil {
+					break loop
+				}
 			case <-a.termchan:
 				a.Kill()
 				break loop
@@ -401,13 +404,19 @@ func (a *ExecAction) RunCommand() error {
 	}
 	a.cmd = nil
 
-	runtime := time.Since(starttime)
-	if runtime < a.Cooldown {
-		fmt.Fprintln(a.Terminal().Verbose(), "Waiting for cooldown:",
-			a.Cooldown-runtime)
-		time.Sleep(a.Cooldown - runtime)
+	cooldown := a.Cooldown - time.Since(starttime)
+	if cooldown < 0 {
+		cooldown = 0
 	}
-	return err
+
+	select {
+	case <-a.termchan:
+		return fmt.Errorf("Received terminate during cooldown")
+
+	case <-time.After(cooldown):
+	}
+
+	return nil
 }
 
 func (a *ExecAction) Kill() error {
