@@ -103,7 +103,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 		fmt.Println("Could not start terminal size listener!")
 	}
 
-	limit := 1
+	limit := 4
 
 	s, err := tsize.GetSize()
 	if err == nil {
