@@ -1,6 +1,7 @@
 package pawnd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,8 @@ import (
 	zglob "github.com/mattn/go-zglob"
 	"github.com/robfig/cron"
 	fsnotify "gopkg.in/fsnotify.v1"
+	"mvdan.cc/sh/interp"
+	"mvdan.cc/sh/syntax"
 )
 
 func ActionName(name string) string {
@@ -258,7 +261,6 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 		ret.sig = SupportedSignals[signame]
 	}
 
-
 	return &ret, nil
 }
 
@@ -443,6 +445,132 @@ func (a *ExecAction) Receive(from, message string) {
 		fmt.Fprintln(a.Terminal().Verbose(), "Received terminate!")
 		a.termchan <- true
 	}
+}
+
+///
+
+type ShAction struct {
+	Cooldown  time.Duration
+	Timeout   time.Duration
+	Succeeded []string
+	Failed    []string
+
+	script    *syntax.File
+	startchan chan bool
+	termchan  chan bool
+	cancel    context.CancelFunc
+
+	BaseAction
+}
+
+func CheckShScript(script string) error {
+	r := strings.NewReader(script)
+	_, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
+	return err
+}
+
+func NewShAction(script string) (*ShAction, error) {
+	r := strings.NewReader(script)
+	scr, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &ShAction{
+		Cooldown:  3000 * time.Millisecond,
+		script:    scr,
+		startchan: make(chan bool),
+		termchan:  make(chan bool),
+	}
+
+	ret.Visible = true
+
+	return ret, nil
+}
+
+func (a *ShAction) RunCommand() error {
+	starttime := time.Now()
+
+	term := a.Terminal()
+	i, err := interp.New(interp.StdIO(nil, term.Stdout(), term.Stderr()))
+	if err != nil {
+		return err
+	}
+
+	i.Reset()
+	i.KillTimeout = -1
+
+	ctx := context.Background()
+	if a.Timeout != 0 {
+		ctx, a.cancel = context.WithTimeout(ctx, a.Timeout)
+		defer func() {
+			a.cancel()
+			a.cancel = nil
+		}()
+	}
+
+	info := ""
+	term.SetStatus(statusRun, info)
+
+	err = i.Run(ctx, a.script)
+	if err == nil {
+		a.trigger(a.Succeeded)
+		term.SetStatus(statusOk, "")
+	} else {
+		info = ""
+		if exitStat, ok := err.(*interp.ShellExitStatus); ok {
+			info = fmt.Sprintf("Failed with code: %d", exitStat)
+		} else {
+			info = err.Error()
+		}
+		a.trigger(a.Failed)
+		term.SetStatus(statusFail, info)
+	}
+
+	cooldown := a.Cooldown - time.Since(starttime)
+	if cooldown < 0 {
+		cooldown = 0
+	}
+
+	select {
+	case <-a.termchan:
+		return fmt.Errorf("Received terminate during cooldown")
+
+	case <-time.After(cooldown):
+	}
+	return nil
+}
+
+func (a *ShAction) Receive(from, message string) {
+	switch message {
+	case MsgTrig:
+		a.startchan <- true
+	case MsgTerm:
+		a.termchan <- true
+	}
+}
+
+func (a *ShAction) Run() {
+	go func() {
+	loop:
+		for {
+			select {
+			case <-a.startchan:
+				err := a.RunCommand()
+				if err != nil {
+					break loop
+				}
+			case <-a.termchan:
+				c := a.cancel
+				if c != nil {
+					c()
+					a.cancel = nil
+				}
+				break loop
+			}
+		}
+		a.bus.LinkStopped(a.name)
+	}()
 }
 
 ///

@@ -7,7 +7,7 @@ import (
 	"unicode"
 
 	util "github.com/kopoli/go-util"
-	"gopkg.in/ini.v1"
+	ini "gopkg.in/ini.v1"
 )
 
 // splitWsQuote splits a string by whitespace, but takes doublequotes into
@@ -69,7 +69,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		count := 0
-		types := []string{"daemon", "exec", "file", "cron", "signal"}
+		types := []string{"daemon", "exec", "script", "file", "cron", "signal"}
 		for i := range types {
 			if sect.HasKey(types[i]) {
 				count++
@@ -88,7 +88,8 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			if err != nil {
 				goto fail
 			}
-		} else if sect.HasKey("exec") || sect.HasKey("daemon") {
+		} else if sect.HasKey("exec") || sect.HasKey("daemon") ||
+			sect.HasKey("script") {
 			err = hasProperDuration(sect, "cooldown")
 			if err != nil {
 				goto fail
@@ -96,6 +97,12 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			err = hasProperDuration(sect, "timeout")
 			if err != nil {
 				goto fail
+			}
+			if sect.HasKey("script") {
+				err = CheckShScript(sect.Key("script").String())
+				if err != nil {
+					goto fail
+				}
 			}
 		} else if sect.HasKey("cron") {
 			err = CheckCronSpec(sect.Key("cron").String())
@@ -141,6 +148,22 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 				name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
 				bus.Register(name, a)
 				bus.LinkStopped(name)
+			}
+		} else if sect.HasKey("script") {
+			a, err := NewShAction(sect.Key("script").String())
+			if err == nil {
+				bus.Register(ActionName(sect.Name()), a)
+				a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
+				a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
+				a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
+				a.Failed = splitWsQuote(sect.Key("failed").Value())
+				a.Visible = sect.Key("visible").MustBool(true)
+				if sect.HasKey("init") {
+					a := NewInitAction(ActionName(sect.Name()))
+					name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
+					bus.Register(name, a)
+					bus.LinkStopped(name)
+				}
 			}
 		} else if sect.HasKey("file") {
 			key := sect.Key("file")
