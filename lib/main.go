@@ -7,7 +7,6 @@ import (
 func Main(opts util.Options) error {
 	eb := NewEventBus()
 	ta := NewTerminalOutput(opts)
-	ta.Verbose = opts.IsSet("verbose")
 
 	sa, _ := NewSignalAction("interrupt")
 	sa.Terminator = true

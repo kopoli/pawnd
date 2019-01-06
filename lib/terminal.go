@@ -86,7 +86,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 		updateInterval: time.Second * 2,
 		out:            colorable.NewColorableStdout(),
 		Width:          60,
-		Verbose:        false,
+		Verbose:        opts.IsSet("verbose"),
 		ProgTitle:      opts.Get("program-real-name", "pawnd"),
 		readychan:      readychan,
 		buffer: &termWriter{
