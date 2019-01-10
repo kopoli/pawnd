@@ -151,40 +151,50 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			}
 		} else if sect.HasKey("script") {
 			a, err := NewShAction(sect.Key("script").String())
-			if err == nil {
-				bus.Register(ActionName(sect.Name()), a)
-				a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
-				a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
-				a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
-				a.Failed = splitWsQuote(sect.Key("failed").Value())
-				a.Visible = sect.Key("visible").MustBool(true)
-				if sect.HasKey("init") {
-					a := NewInitAction(ActionName(sect.Name()))
-					name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
-					bus.Register(name, a)
-					bus.LinkStopped(name)
-				}
+			if err != nil {
+				return fmt.Errorf("Creating script action in %s failed: %v",
+					sect.Name(), err)
+			}
+			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
+			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
+			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
+			a.Failed = splitWsQuote(sect.Key("failed").Value())
+			a.Visible = sect.Key("visible").MustBool(true)
+
+			bus.Register(ActionName(sect.Name()), a)
+
+			if sect.HasKey("init") {
+				a := NewInitAction(ActionName(sect.Name()))
+				name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
+				bus.Register(name, a)
+				bus.LinkStopped(name)
 			}
 		} else if sect.HasKey("file") {
 			key := sect.Key("file")
 			a, err := NewFileAction(splitWsQuote(key.String())...)
-			if err == nil {
-				a.Changed = splitWsQuote(sect.Key("changed").Value())
-				a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
-				bus.Register(ActionName(sect.Name()), a)
+			if err != nil {
+				return fmt.Errorf("Creating file watcher in %s failed: %v",
+					sect.Name(), err)
 			}
+			a.Changed = splitWsQuote(sect.Key("changed").Value())
+			a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
+			bus.Register(ActionName(sect.Name()), a)
 		} else if sect.HasKey("cron") {
 			a, err := NewCronAction(sect.Key("cron").String())
-			if err == nil {
-				a.Triggered = splitWsQuote(sect.Key("triggered").Value())
-				bus.Register(ActionName(sect.Name()), a)
+			if err != nil {
+				return fmt.Errorf("Creating cron action in %s failed: %v",
+					sect.Name(), err)
 			}
+			a.Triggered = splitWsQuote(sect.Key("triggered").Value())
+			bus.Register(ActionName(sect.Name()), a)
 		} else if sect.HasKey("signal") {
 			a, err := NewSignalAction(sect.Key("signal").String())
-			if err == nil {
-				a.Triggered = splitWsQuote(sect.Key("triggered").Value())
-				bus.Register(ActionName(sect.Name()), a)
+			if err != nil {
+				return fmt.Errorf("Creating signal action in %s failed: %v",
+					sect.Name(), err)
 			}
+			a.Triggered = splitWsQuote(sect.Key("triggered").Value())
+			bus.Register(ActionName(sect.Name()), a)
 		}
 	}
 
