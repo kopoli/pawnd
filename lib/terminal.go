@@ -313,6 +313,8 @@ func (a *TerminalOutput) draw() {
 }
 
 func (t *TerminalOutput) Draw() {
+	// When Draw is called, it is regarded as initial run
+	t.initialized = false
 	t.readychan <- true
 }
 
