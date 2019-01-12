@@ -124,6 +124,15 @@ fail:
 }
 
 func CreateActions(file *ini.File, bus *EventBus) error {
+	term := GetTerminal("")
+	errhandle := func(name string, section string, err error) bool {
+		if err != nil {
+			fmt.Fprintf(term.Stderr(), "Creating %s in section \"%s\" failed with: %v\n",
+				name, section, err)
+		}
+
+		return err != nil
+	}
 	for _, sect := range file.Sections() {
 		if sect.HasKey("exec") || sect.HasKey("daemon") {
 			keyname := "exec"
@@ -151,9 +160,8 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			}
 		} else if sect.HasKey("script") {
 			a, err := NewShAction(sect.Key("script").String())
-			if err != nil {
-				return fmt.Errorf("Creating script action in %s failed: %v",
-					sect.Name(), err)
+			if errhandle("script action", sect.Name(), err) {
+				continue
 			}
 			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
 			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
@@ -172,26 +180,23 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 		} else if sect.HasKey("file") {
 			key := sect.Key("file")
 			a, err := NewFileAction(splitWsQuote(key.String())...)
-			if err != nil {
-				return fmt.Errorf("Creating file watcher in %s failed: %v",
-					sect.Name(), err)
+			if errhandle("file watcher", sect.Name(), err) {
+				continue
 			}
 			a.Changed = splitWsQuote(sect.Key("changed").Value())
 			a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
 			bus.Register(ActionName(sect.Name()), a)
 		} else if sect.HasKey("cron") {
 			a, err := NewCronAction(sect.Key("cron").String())
-			if err != nil {
-				return fmt.Errorf("Creating cron action in %s failed: %v",
-					sect.Name(), err)
+			if errhandle("cron action", sect.Name(), err) {
+				continue
 			}
 			a.Triggered = splitWsQuote(sect.Key("triggered").Value())
 			bus.Register(ActionName(sect.Name()), a)
 		} else if sect.HasKey("signal") {
 			a, err := NewSignalAction(sect.Key("signal").String())
-			if err != nil {
-				return fmt.Errorf("Creating signal action in %s failed: %v",
-					sect.Name(), err)
+			if errhandle("signal action", sect.Name(), err) {
+				continue
 			}
 			a.Triggered = splitWsQuote(sect.Key("triggered").Value())
 			bus.Register(ActionName(sect.Name()), a)
