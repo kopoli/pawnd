@@ -333,7 +333,7 @@ func (w *VerboseWriter) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
-// terminal is the internal structure behinde the Terminal interface.
+// terminal is the internal structure behind the Terminal interface.
 type terminal struct {
 	Name     string
 	Status   string // Current status of the process
