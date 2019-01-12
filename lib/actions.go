@@ -463,9 +463,9 @@ type ShAction struct {
 	BaseAction
 }
 
-func CheckShScript(script string) error {
+func CheckShScript(script string, section string) error {
 	r := strings.NewReader(script)
-	_, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
+	_, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, section)
 	return err
 }
 

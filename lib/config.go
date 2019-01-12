@@ -99,7 +99,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 				goto fail
 			}
 			if sect.HasKey("script") {
-				err = CheckShScript(sect.Key("script").String())
+				err = CheckShScript(sect.Key("script").String(), sect.Name())
 				if err != nil {
 					goto fail
 				}
