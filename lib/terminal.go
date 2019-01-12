@@ -96,11 +96,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 		termchan: make(chan bool),
 	}
 
-	sl, err := tsize.NewSizeListener()
-	if err != nil {
-		fmt.Println("Could not start terminal size listener:", err)
-	}
-
+	sl, slerr := tsize.NewSizeListener()
 	limit := 4
 
 	s, err := tsize.GetSize()
@@ -132,6 +128,12 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 	termOutput = ret
 	ret.defaultTerm = RegisterTerminal("init", false)
 	ret.terminals = nil
+
+	// Print out the size listener error when the terminal is ready
+	if slerr != nil {
+		fmt.Fprintln(ret.defaultTerm.Stderr(),
+			"Could not start terminal size listener:", err)
+	}
 
 	return termOutput
 }
