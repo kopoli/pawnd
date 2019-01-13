@@ -290,7 +290,7 @@ func (a *TerminalOutput) draw() {
 		if trace[len(trace)-1] != '\n' {
 			a.buffer.out.WriteByte('\n')
 		}
-		a.buffer.out.WriteTo(tmp)
+		_, _ = a.buffer.out.WriteTo(tmp)
 	}
 	a.buffer.mutex.Unlock()
 
@@ -310,7 +310,7 @@ func (a *TerminalOutput) draw() {
 		fmt.Fprintf(tmp, "\033]0;%s[%s]\007", a.ProgTitle, status)
 		a.TitleStatus = status
 	}
-	tmp.WriteTo(a.out)
+	_, _ = tmp.WriteTo(a.out)
 }
 
 func (a *TerminalOutput) Draw() {
@@ -503,8 +503,8 @@ func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 		}
 
 		// Write only into the buffer
-		p.buf.Write(buf)
-		return n, nil
+		_, err = p.buf.Write(buf)
+		return n, err
 	}
 
 	endsInNewline := (buf[len(buf)-1] == '\n')
@@ -531,11 +531,17 @@ func (p *PrefixedWriter) Write(buf []byte) (n int, err error) {
 	}
 
 	// Write to output
-	p.buf.WriteTo(p.Out)
+	_, err = p.buf.WriteTo(p.Out)
+	if err != nil {
+		return 0, err
+	}
 
 	// Write the last line to buffer for next time if newline isn't present
 	if !endsInNewline {
-		p.buf.Write(lines[len(lines)-1])
+		_, err = p.buf.Write(lines[len(lines)-1])
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return n, nil
