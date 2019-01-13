@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
@@ -283,7 +282,7 @@ func (a *SignalAction) terminate() {
 }
 
 func (a *SignalAction) Run() {
-	signal.Notify(a.sigchan, a.sig)
+	SignalNotify(a.sigchan, a.sig)
 	go func() {
 	loop:
 		for {

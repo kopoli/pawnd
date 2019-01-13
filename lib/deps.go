@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 
 	colorable "github.com/mattn/go-colorable"
 )
@@ -17,4 +18,8 @@ var FailSafeExit = func() {
 
 var NewTerminalStdout = func() io.Writer {
 	return colorable.NewColorableStdout()
+}
+
+var SignalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+	signal.Notify(c, sig...)
 }
