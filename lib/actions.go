@@ -517,7 +517,6 @@ func (a *ShAction) RunCommand() error {
 		a.trigger(a.Succeeded)
 		term.SetStatus(statusOk, "")
 	} else {
-		info = ""
 		if exitStat, ok := err.(*interp.ShellExitStatus); ok {
 			info = fmt.Sprintf("Failed with code: %d", exitStat)
 		} else {
