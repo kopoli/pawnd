@@ -50,7 +50,7 @@ type BusLink interface {
 }
 
 // Register a node with given name
-func (eb *EventBus) Register(name string, link BusLink) error {
+func (eb *EventBus) Register(name string, link BusLink) {
 	eb.mutex.Lock()
 	eb.links[name] = link
 	eb.mutex.Unlock()
@@ -58,8 +58,6 @@ func (eb *EventBus) Register(name string, link BusLink) error {
 	link.Identify(name, eb)
 
 	eb.wg.Add(1)
-
-	return nil
 }
 
 type Message struct {
