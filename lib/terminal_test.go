@@ -40,7 +40,11 @@ func Test_PrefixedWriter(t *testing.T) {
 				t.Errorf("prefixedwriter.Write() error = %v", err)
 				return
 			}
-			p.buf.WriteTo(out)
+			_, err = p.buf.WriteTo(out)
+			if err != nil {
+				t.Errorf("prefixedwriter.WriteTo() error = %v", err)
+				return
+			}
 			if out.String() != tt.output {
 				t.Errorf("Unexpected output:\ndata:\ngot: [%v]\nexpected: [%v]",
 					out.String(), tt.output,
