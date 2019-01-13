@@ -55,8 +55,13 @@ func GenerateTemplates(opts util.Options) error {
 	}
 
 	for i := range templates {
-		out.Write([]byte(all[templates[i]]))
-		out.Write([]byte{'\n'})
+		_, err := out.Write([]byte(all[templates[i]]))
+		if err == nil {
+			_, err = out.Write([]byte{'\n'})
+		}
+		if err != nil {
+			return util.E.Annotate(err, "Could not write template")
+		}
 	}
 
 	return nil
