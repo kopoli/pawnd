@@ -278,8 +278,7 @@ func (a *SignalAction) terminate() {
 	// Set a time limit to termination
 	time.AfterFunc(2*time.Second, func() {
 		// Triggering this is a bug.
-		fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
-		os.Exit(2)
+		FailSafeExit()
 	})
 }
 
