@@ -313,10 +313,10 @@ func (a *TerminalOutput) draw() {
 	tmp.WriteTo(a.out)
 }
 
-func (t *TerminalOutput) Draw() {
+func (a *TerminalOutput) Draw() {
 	// When Draw is called, it is regarded as initial run
-	t.initialized = false
-	t.readychan <- true
+	a.initialized = false
+	a.readychan <- true
 }
 
 ///
