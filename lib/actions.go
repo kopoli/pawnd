@@ -149,7 +149,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 	var err error
 	ret.watch, err = fsnotify.NewWatcher()
 	if err != nil {
-		util.E.Annotate(err, "Could not create a new watcher")
+		err = util.E.Annotate(err, "Could not create a new watcher")
 		return nil, err
 	}
 
@@ -225,7 +225,7 @@ func (a *FileAction) Run() {
 func CheckSignal(name string) error {
 	_, ok := SupportedSignals[name]
 	if !ok {
-		return fmt.Errorf("Signal name \"%s\" is not supported.", name)
+		return fmt.Errorf("signal name \"%s\" is not supported", name)
 	}
 	return nil
 }
@@ -345,7 +345,7 @@ func (a *ExecAction) Run() {
 			select {
 			case <-a.timeoutTimer.C:
 				fmt.Fprintln(a.Terminal().Verbose(), "Timed out")
-				a.Kill()
+				_ = a.Kill()
 			case <-a.startchan:
 				if a.Daemon {
 					_ = a.Kill()
@@ -355,7 +355,7 @@ func (a *ExecAction) Run() {
 					break loop
 				}
 			case <-a.termchan:
-				a.Kill()
+				_ = a.Kill()
 				break loop
 			}
 		}
@@ -654,7 +654,11 @@ func ActionDemo(opts util.Options) {
 		return
 	}
 
-	CreateActions(f, eb)
+	err = CreateActions(f, eb)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	eb.Run()
 
