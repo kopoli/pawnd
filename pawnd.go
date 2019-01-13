@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	version          = "Undefined"
-	timestamp        = "Undefined"
-	progVersion      = "" + version
+	version     = "Undefined"
+	timestamp   = "Undefined"
+	progVersion = "" + version
 )
 
 func fault(err error, message string, arg ...string) {

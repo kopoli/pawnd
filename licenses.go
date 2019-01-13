@@ -30,7 +30,7 @@ func pawndGetLicenses() (map[string]pawndLicense, error) {
 	}
 	data := map[string]EncodedLicense{
 
-		"github.com/ahmetalpbalkan/go-cursor": EncodedLicense{
+		"github.com/ahmetalpbalkan/go-cursor": {
 			Name: "Apache-2.0",
 			Text: `
 H4sIAAAAAAAC/9RaX5PbOHJ/x6foqCqVmSpa9vruktzek9YzvlXi1bhm5DiuVB5AsikiBgEuAI6G+fSp
@@ -98,7 +98,7 @@ W2OtSDPOzGqVSb0Vo9UUIRNTAJjgwpY8dZHLMc8UkjKwyAC/8fuzD9t397un+1dv12/4hf8Dbc0/cKFt
 liOaix9egPInC65SVAD4f2KpbLQnxBMRchQza2hUBVqawyAPCAf7jI454pK1UW8AsCC3/lKvtfifAAAA
 //8SR9vCFigAAA==`,
 		},
-		"github.com/jawher/mow.cli": EncodedLicense{
+		"github.com/jawher/mow.cli": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/3xRvY7jNhjs+RSDre4AYvODVOm4Em0xkUiDos9xSUv0ioEsGiIVw28fUPbeYVNEjcDv
@@ -114,7 +114,7 @@ pGFvohbmSMlGGJkxN0qDYce0EcW+Zhq7vd6ploPJElJJITdayC1vuDSvEBJSgX/j0qCtWF1nKsL2plI6
 hsIobb6vHkTLKZgWbTZko1VDSbZTbfKIkHlP8gdKthqfElF6fe9b/h0QJWe1kNsWQn6K75WQfwMAAP//
 eVpV+1MEAAA=`,
 		},
-		"github.com/kopoli/go-util": EncodedLicense{
+		"github.com/kopoli/go-util": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpz6KE3xqItIhJpUPS6PtISHbGVRUOkG+Tti5Gd3WZPgjjz
@@ -130,7 +130,7 @@ YaW3ByM3lUWl61KYFi8CteQvtbhJqQNWNZdNgZI3fCMWlLaVMIzWbu6wrwQ9kR5X4CsrtaIYK62s4Stb
 wGpjv0P3shUFuJEtFbI2uikY1anXtCIV4ZS4sVDV+HIRbZb/XSu+E6IUvJZq0xKYIn4uP/8XAAD//6vn
 VXQ3BAAA`,
 		},
-		"github.com/kopoli/pawnd": EncodedLicense{
+		"github.com/kopoli/pawnd": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpzKnpjLNoiIpEGRa/rIy3REVtZNES6Qd6+GNnZbfYkiDPf
@@ -146,7 +146,7 @@ Vnp7MHJTWVS6LoVp8SJQS/5Si5uUOmBVc9kUKHnDN2JBaVsJw2jt5g77StAT6XEFvrJSK4qx0soavrIF
 rDb2O3QvW1GAG9lSIWujm4JRnXpNK1IRTokbC1WNLxfRZvnfteI7IUrBa6k2LYEp4ufyM/svAAD//2/y
 Iu44BAAA`,
 		},
-		"github.com/mattn/go-colorable": EncodedLicense{
+		"github.com/mattn/go-colorable": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxve+ihN8aiLaISaVD0uj7SEh2xkEVDpBrk3xcjO7vdngRx
@@ -162,7 +162,7 @@ K23IHzZ6fzJyV1lUui6FafEmUEv+Vou7lDphU3PZFCh5w3diRWlbCcNo7e4Ox0rQE+lxBb6xUiuKsdHK
 Gr6xBaw29jv0KFtRgBvZUiFbo5uCUZ16SytSEU6JOwtVjZ8uos36f2jFd0KUgtdS7VoCU8Sv5Vf2TwAA
 AP//SpF7+z0EAAA=`,
 		},
-		"github.com/mattn/go-isatty": EncodedLicense{
+		"github.com/mattn/go-isatty": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xSzY6rNhTe8xSfZjUjoXRfVVU94ASrYEfGuWmWDjjBVwQjbDrN21d2cjt3uoric77f
@@ -178,7 +178,7 @@ kxQ5qErI5K8Q+5Nku0qhEnVJZYt3ipqR95o+pPgJRU1Yk6MkDdnRhBKqojKtPd0dK5qeGAfhIIVigscY
 heBKkkLlUEKq/6BH1tIcRLI2FrKVoskR6xTb1BmPOE4fLLFqfLmIkOn/oaWfXkpKasZ3bQT/vLzJ/g0A
 AP//AGNqrEsEAAA=`,
 		},
-		"github.com/mattn/go-zglob": EncodedLicense{
+		"github.com/mattn/go-zglob": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxveynQG2PRFlGJNCh6XR9piY5YyKIhUg3y74uRnd1uT4I4
@@ -194,7 +194,7 @@ lTbkDxu9Pxm5qywqXZfCtHgTqCV/q8VdSp2wqblsCpS84TuxorSthGG0dneHYyXoifS4At9YqRXF2Ghl
 Dd/YAlYb+x16lK0owI1sqZCt0U3BqE69pRWpCKfEnYWqxk8X0Wb9P7TiOyFKwWupdi2BKeLX8iv7JwAA
 ///Y6fA7PQQAAA==`,
 		},
-		"github.com/mattn/go-zglob/fastwalk": EncodedLicense{
+		"github.com/mattn/go-zglob/fastwalk": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxveynQG2PRFlGJNCh6XR9piY5YyKIhUg3y74uRnd1uT4I4
@@ -210,7 +210,7 @@ lTbkDxu9Pxm5qywqXZfCtHgTqCV/q8VdSp2wqblsCpS84TuxorSthGG0dneHYyXoifS4At9YqRXF2Ghl
 Dd/YAlYb+x16lK0owI1sqZCt0U3BqE69pRWpCKfEnYWqxk8X0Wb9P7TiOyFKwWupdi2BKeLX8iv7JwAA
 ///Y6fA7PQQAAA==`,
 		},
-		"github.com/mgutz/ansi": EncodedLicense{
+		"github.com/mgutz/ansi": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzY7rJhTe+yk+zWpGsqZ/u+4Ym8SoNkSY3DRLYpMxlWMiwB2lT19Bcjt3urLMOd/v
@@ -226,7 +226,7 @@ UWhEW1PZ442iZeStpXcpfkTVEtaVqElHtjSjhGqozGsPd4eG5ifGQThIpZjgKUYluJKkUiWUkOo/6IH1
 tASRrE+FbKToSqQ6xSZ3xhOO0ztLqhpfLiJk/t/39NNLTUnL+LZP4B+XX4vi3wAAAP//SKx5nT0EAAA=
 `,
 		},
-		"github.com/pkg/errors": EncodedLicense{
+		"github.com/pkg/errors": {
 			Name: "FreeBSD",
 			Text: `
 H4sIAAAAAAAC/5SSQY/bNhOG7/wVL3LKfhD8tQV6aYqitDS2BpBJlaTW8VFrcWMCtrSQ6A323xdkdhGn
@@ -243,7 +243,7 @@ x1rdodZ7uicjStlZqrJdrXJUV5M2hzQ0OcjyC+xrcjWZJDSbkkmBdYZLd3NMaAOnjbvJCEXbhrekSko0
 Ok3Zs6U7SMM2HeAva/fyAN3lyOmOOksilzdfbJFvEryBrO45Yb8ebrW1/PqdZGVljS+6V+LPAAAA//+5
 j2aZIAUAAA==`,
 		},
-		"github.com/ryanuber/go-glob": EncodedLicense{
+		"github.com/ryanuber/go-glob": {
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvqDnnpjLNoiKpEGRa/royzREQuZNES6gd++GNnZbfYkiDPf
@@ -259,7 +259,7 @@ kZvKotJ1KUyLN4Fa8rda3KXUAauay6ZAyRu+EQtK20oYRmt3d9hXgp5IjyvwlZVaUYyVVtbwlS1gtbHf
 oXvZigLcyJYKWRvdFIzq1GtakYpwStxZqGp8uYg2y/+uFd8JUQpeS7VpCUwRP5df2X8BAAD//9UdrcM0
 BAAA`,
 		},
-		"golang.org/x/sys/unix": EncodedLicense{
+		"golang.org/x/sys/unix": {
 			Name: "NewBSD",
 			Text: `
 H4sIAAAAAAAC/6SSwY/jph/F7/wVT3va+cnKb9VbuydikxjJMS7gyebosckEKTYRkBnNf1/BZDrZtlIP
@@ -277,7 +277,7 @@ bQqwH2zXNVQeipumYr/3rNWcNqjojm6Zwtd/IdJJUfaS7ZJlsYHq10pz3WuGrRBV5qyYfOQlU9/RCJVh
 4plJ0YRAaclLfX9MSGghNfnMiJZtG75lbcnSrkgqe67YA6jkKh3geSz29ADR58jpiXrFSF7eFbbIDwm+
 Aa0eebJ9O9wJpfitJhlZWd9wr8gfAQAA//+AUlb6xwUAAA==`,
 		},
-		"gopkg.in/fsnotify.v1": EncodedLicense{
+		"gopkg.in/fsnotify.v1": {
 			Name: "NewBSD",
 			Text: `
 H4sIAAAAAAAC/6SSwY7jKBeF9zzFUa+6f1n5Z3o5vSI2iZEc4wFc6SxdNqkgxSYCUqV6+xFUaio901Iv
@@ -295,7 +295,7 @@ xeQDL5n6hkaoDKtXrCAV1TQP7qTYcK2+pfO6Vzwz461mUvad5qL9glrs2QOTKGmvWJXhijZZJbpmQh5S
 08Qgsy+wr5mumUw8MymaECgteanvnwkJLaQmHx7Rsm3Dt6wtWboVqcueK/YFVHKVHvA8Fnt6gOiz5bSi
 XjGSj3eBLfIiwTeg1QNPsm+PO6EUv8UkIyvrG+4V+SsAAP//48/9mQEGAAA=`,
 		},
-		"gopkg.in/ini.v1": EncodedLicense{
+		"gopkg.in/ini.v1": {
 			Name: "Apache-2.0",
 			Text: `
 H4sIAAAAAAAC/9Ra3ZLbuHK+x1N0VJXKTBUte509Sc6eq1nP+KwSr8Y1kuO4UrkAyaaIGAS4ADga5ulT
