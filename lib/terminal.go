@@ -11,7 +11,6 @@ import (
 	cursor "github.com/ahmetalpbalkan/go-cursor"
 	tsize "github.com/kopoli/go-terminal-size"
 	util "github.com/kopoli/go-util"
-	colorable "github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
 )
 
@@ -84,7 +83,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 
 	var ret = &TerminalOutput{
 		updateInterval: time.Second * 2,
-		out:            colorable.NewColorableStdout(),
+		out:            NewTerminalStdout(),
 		Width:          60,
 		Verbose:        opts.IsSet("verbose"),
 		ProgTitle:      opts.Get("program-real-name", "pawnd"),

@@ -4,10 +4,17 @@ package pawnd
 
 import (
 	"fmt"
+	"io"
 	"os"
+
+	colorable "github.com/mattn/go-colorable"
 )
 
 var FailSafeExit = func() {
 	fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
 	os.Exit(2)
+}
+
+var NewTerminalStdout = func() io.Writer {
+	return colorable.NewColorableStdout()
 }
