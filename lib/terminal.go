@@ -161,13 +161,14 @@ func (a *TerminalOutput) updateSpinners() {
 	for _, t := range a.terminals {
 		t.statusMutex.Lock()
 		progress := t.Progress
-		t.statusMutex.Unlock()
 		if progress < 0 {
 			progress = -((-progress + 1) % (len(spinner) + 1))
 			if progress == 0 {
 				progress = -1
 			}
 		}
+		t.Progress = progress
+		t.statusMutex.Unlock()
 	}
 }
 
