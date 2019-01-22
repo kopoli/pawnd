@@ -391,7 +391,9 @@ func (t *terminal) SetStatus(status string, info string) {
 
 	switch status {
 	case statusRun:
+		t.statusMutex.Lock()
 		t.startTime = time.Now()
+		t.statusMutex.Unlock()
 		progress = 0
 		if info == infoDaemon {
 			progress = -1
