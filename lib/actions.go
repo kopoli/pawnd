@@ -142,7 +142,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 	var ret = FileAction{
 		Patterns:   patterns,
 		Hysteresis: 1000 * time.Millisecond,
-		termchan:   make(chan bool),
+		termchan:   make(chan bool, 1),
 	}
 
 	var err error
@@ -252,7 +252,7 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
-		termchan: make(chan bool),
+		termchan: make(chan bool, 1),
 	}
 	if signame == "interrupt" {
 		ret.sig = os.Interrupt
@@ -326,8 +326,8 @@ func NewExecAction(args ...string) *ExecAction {
 	ret := &ExecAction{
 		Args:         args,
 		Cooldown:     3000 * time.Millisecond,
-		startchan:    make(chan bool),
-		termchan:     make(chan bool),
+		startchan:    make(chan bool, 1),
+		termchan:     make(chan bool, 1),
 		timeoutTimer: time.NewTimer(0),
 	}
 	stopTimer(ret.timeoutTimer)
@@ -477,8 +477,8 @@ func NewShAction(script string) (*ShAction, error) {
 	ret := &ShAction{
 		Cooldown:  3000 * time.Millisecond,
 		script:    scr,
-		startchan: make(chan bool),
-		termchan:  make(chan bool),
+		startchan: make(chan bool, 1),
+		termchan:  make(chan bool, 1),
 	}
 
 	ret.Visible = true
@@ -594,7 +594,7 @@ func NewCronAction(spec string) (*CronAction, error) {
 	var ret = &CronAction{
 		spec:     spec,
 		sched:    sched,
-		termchan: make(chan bool),
+		termchan: make(chan bool, 1),
 	}
 
 	return ret, nil
