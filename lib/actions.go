@@ -571,6 +571,61 @@ func (a *ShAction) Run() {
 				break loop
 			}
 		}
+		fmt.Fprintln(a.Terminal().Stdout(), "Script stopped")
+		a.bus.LinkStopped(a.name)
+	}()
+}
+
+///
+
+type RestartAction struct {
+	trigchan chan bool
+	termchan chan bool
+
+	conffile string
+
+	BaseAction
+}
+
+func NewRestartAction(conffile string) *RestartAction {
+	return &RestartAction{
+		trigchan: make(chan bool, 1),
+		termchan: make(chan bool, 1),
+		conffile: conffile,
+	}
+}
+
+func (a *RestartAction) Receive(from, message string) {
+	switch message {
+	case MsgTrig:
+		a.trigchan <- true
+	case MsgTerm:
+		a.termchan <- true
+	}
+}
+
+func (a *RestartAction) restart() {
+	_, err := ValidateConfig(a.conffile)
+	if err != nil {
+		fmt.Fprintln(a.Terminal().Stderr(),
+			"Configuration contained errors:", err)
+		return
+	}
+	fmt.Fprintln(a.Terminal().Verbose(), "Configuration updated. Restarting.")
+	a.Send(ToAll, MsgRest)
+}
+
+func (a *RestartAction) Run() {
+	go func() {
+	loop:
+		for {
+			select {
+			case <-a.trigchan:
+				a.restart()
+			case <-a.termchan:
+				break loop
+			}
+		}
 		a.bus.LinkStopped(a.name)
 	}()
 }
