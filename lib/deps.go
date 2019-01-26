@@ -28,3 +28,7 @@ var NewTerminalStdout = func() io.Writer {
 var SignalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
 	signal.Notify(c, sig...)
 }
+
+var SignalReset = func(sig ...os.Signal) {
+	signal.Reset(sig...)
+}

@@ -294,6 +294,7 @@ func (a *SignalAction) Run() {
 					a.trigger(a.Triggered)
 				}
 			case <-a.termchan:
+				SignalReset(a.sig)
 				break loop
 			}
 		}
