@@ -62,11 +62,6 @@ func main() {
 		return
 	}
 
-	if opts.IsSet("demo-mode") {
-		pawnd.ActionDemo(opts)
-		os.Exit(25)
-	}
-
 	if opts.IsSet("generate-templates") {
 		err = pawnd.GenerateTemplates(opts)
 		fault(err, "Generating templates failed")

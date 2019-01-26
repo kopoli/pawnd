@@ -694,30 +694,3 @@ func (a *CronAction) Run() {
 		a.bus.LinkStopped(a.name)
 	}()
 }
-
-///
-
-func ActionDemo(opts util.Options) {
-	eb := NewEventBus()
-
-	ta := NewTerminalOutput(opts)
-
-	sa, _ := NewSignalAction("interrupt")
-	eb.Register("sighandler", sa)
-
-	f, err := ValidateConfig("Testfile")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = CreateActions(f, eb)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	eb.Run()
-
-	ta.Stop()
-}
