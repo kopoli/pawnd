@@ -7,9 +7,14 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 
 	colorable "github.com/mattn/go-colorable"
 )
+
+func PrintGoroutines() {
+	_ = pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+}
 
 var FailSafeExit = func() {
 	fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
