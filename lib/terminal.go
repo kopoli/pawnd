@@ -75,9 +75,6 @@ type TerminalOutput struct {
 }
 
 func NewTerminalOutput(opts util.Options) *TerminalOutput {
-	if termOutput != nil {
-		return termOutput
-	}
 
 	readychan := make(chan bool)
 
