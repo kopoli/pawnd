@@ -122,6 +122,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 				break loop
 			}
 		}
+		sl.Close()
 	}()
 
 	termOutput = ret
