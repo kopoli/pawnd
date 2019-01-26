@@ -74,7 +74,15 @@ func main() {
 		return
 	}
 
-	err = pawnd.Main(opts)
+	for {
+		err = pawnd.Main(opts)
+		if err == pawnd.ErrMainRestarted {
+			err = nil
+			continue
+		}
+		break
+	}
+
 	fault(err, "Running pawnd failed")
 	os.Exit(0)
 }

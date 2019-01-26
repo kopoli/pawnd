@@ -12,7 +12,8 @@ func Main(opts util.Options) error {
 	sa.Terminator = true
 	eb.Register("sighandler", sa)
 
-	f, err := ValidateConfig(opts.Get("configuration-file", "Pawnfile"))
+	conffile := opts.Get("configuration-file", "Pawnfile")
+	f, err := ValidateConfig(conffile)
 	if err != nil {
 		return err
 	}
@@ -22,8 +23,18 @@ func Main(opts util.Options) error {
 		return err
 	}
 
+	// Watch the configuration file for updates
+	fa, err := NewFileAction(conffile)
+	if err != nil {
+		return err
+	}
+	fa.Changed = []string{"pawnd-restart"}
+	eb.Register("pawnfile-watcher", fa)
+	ra := NewRestartAction(conffile)
+	eb.Register(ActionName(fa.Changed[0]), ra)
+
 	ta.Draw()
-	eb.Run()
+	err = eb.Run()
 	ta.Stop()
-	return nil
+	return err
 }
