@@ -351,6 +351,8 @@ func (a *ExecAction) Run() {
 				}
 				err := a.RunCommand()
 				if err != nil {
+					fmt.Fprintln(a.Terminal().Stderr(),
+						"Running command failed:", err)
 					break loop
 				}
 			case <-a.termchan:
@@ -556,6 +558,8 @@ func (a *ShAction) Run() {
 			case <-a.startchan:
 				err := a.RunCommand()
 				if err != nil {
+					fmt.Fprintln(a.Terminal().Stderr(),
+						"Running script failed:", err)
 					break loop
 				}
 			case <-a.termchan:
