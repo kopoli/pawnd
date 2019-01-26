@@ -75,8 +75,7 @@ type TerminalOutput struct {
 }
 
 func NewTerminalOutput(opts util.Options) *TerminalOutput {
-
-	readychan := make(chan bool)
+	readychan := make(chan bool, 1)
 
 	var ret = &TerminalOutput{
 		updateInterval: time.Second * 2,
@@ -89,7 +88,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 			ready: readychan,
 			out:   &bytes.Buffer{},
 		},
-		termchan: make(chan bool),
+		termchan: make(chan bool, 1),
 	}
 
 	sl, slerr := tsize.NewSizeListener()
