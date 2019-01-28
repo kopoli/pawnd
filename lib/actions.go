@@ -467,6 +467,9 @@ type ShAction struct {
 func CheckShScript(script string, section string) error {
 	r := strings.NewReader(script)
 	_, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, section)
+	if err != nil {
+		err = fmt.Errorf("Script parse error: %v", err)
+	}
 	return err
 }
 
