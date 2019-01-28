@@ -571,7 +571,6 @@ func (a *ShAction) Run() {
 				break loop
 			}
 		}
-		fmt.Fprintln(a.Terminal().Stdout(), "Script stopped")
 		a.bus.LinkStopped(a.name)
 	}()
 }
