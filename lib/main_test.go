@@ -27,11 +27,31 @@ func Test_pawndRunning(t *testing.T) {
 		return buf
 	}
 
+	// type sigchan chan<-os.Signal
+	sigchans := map[os.Signal]chan<-os.Signal{
+		os.Interrupt: nil,
+	}
+
+	deps.SignalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+		for i := range sig {
+			sigchans[sig[i]] = c
+		}
+	}
+
+	deps.SignalReset = func(sig ...os.Signal) {
+		for i := range sig {
+			sigchans[sig[i]] = nil
+		}
+
+	}
+
 	testdir := "integration-test"
 	pawnfile := filepath.Join(testdir, "Pawnfile")
 
 	opts := util.NewOptions()
 	opts.Set("configuration-file", pawnfile)
+
+	type opfunc func() error
 
 	opSleep := func(d time.Duration) func() error {
 		return func() error {
@@ -41,6 +61,7 @@ func Test_pawndRunning(t *testing.T) {
 	}
 
 	opTerminate := func() error {
+		sigchans[os.Interrupt] <- os.Interrupt
 		return nil
 	}
 
@@ -50,27 +71,48 @@ func Test_pawndRunning(t *testing.T) {
 		}
 	}
 
-	type opfunc func() error
+	parsesOk := []opfunc{
+		opSleep(time.Millisecond * 10),
+		opTerminate,
+	}
 
-	tests := []struct {
+	type IntegrationTest struct {
 		name            string
 		preops          []opfunc
-		ops             []func() error
+		ops             []opfunc
 		ExpectedErrorRe string
-	}{
+	}
+
+	PawnfileOk := func(name string, contents string) IntegrationTest {
+		return IntegrationTest{
+			name,
+			[]opfunc{
+				opPawnfile(contents),
+			},
+			parsesOk,
+			"",
+		}
+	}
+	PawnfileError := func(name string, contents string, errorRe string) IntegrationTest {
+		return IntegrationTest{
+			name,
+			[]opfunc{
+				opPawnfile(contents),
+			},
+			nil,
+			errorRe,
+		}
+	}
+
+	tests := []IntegrationTest{
 		{"No pawnfile", nil, nil, "Could not load config.*no such file"},
-		// {"Empty pawnfile", []opfunc{
-		// 	opPawnfile(""),
-		// }, nil, ""},
-		{"Parse: Section type missing", []opfunc{
-			opPawnfile(`[something]
-`),
-		}, nil, "should have exactly one of"},
-		{"Parse: Section type missing with contents", []opfunc{
-			opPawnfile(`[something]
-contents=but missing
-`),
-		}, nil, "should have exactly one of"},
+		PawnfileOk("Empty pawnfile, parses ok", ""),
+		PawnfileError("Parse: Section type missing", `[something]`,
+			"should have exactly one of"),
+		PawnfileError("Parse: Section type missing with contents",
+			`[something]
+contents=but missing`,
+			"should have exactly one of"),
 		{"Parse: Empty file hysteresis", []opfunc{
 			opPawnfile(`[fp]
 file=abc
@@ -89,6 +131,18 @@ file=abc
 hysteresis=10
 `),
 		}, nil, "Duration"},
+		{"Parse: Proper file hysteresis", []opfunc{
+			opPawnfile(`[fp]
+file=abc
+hysteresis=100ms
+`),
+		}, parsesOk, ""},
+		{"Parse: Proper file hysteresis 2", []opfunc{
+			opPawnfile(`[fp]
+file=abc
+hysteresis=2s
+`),
+		}, parsesOk, ""},
 		{"Parse: Invalid exec cooldown", []opfunc{
 			opPawnfile(`[fp]
 exec=false
@@ -101,6 +155,12 @@ exec=false
 cooldown=1
 `),
 		}, nil, "Duration"},
+		{"Parse: Proper exec cooldown", []opfunc{
+			opPawnfile(`[fp]
+exec=false
+cooldown=1s
+`),
+		}, parsesOk, ""},
 		{"Parse: Invalid exec timeout", []opfunc{
 			opPawnfile(`[fp]
 exec=false
@@ -113,6 +173,12 @@ exec=false
 timeout==
 `),
 		}, nil, "Duration"},
+		{"Parse: Proper exec timeout", []opfunc{
+			opPawnfile(`[fp]
+exec=false
+timeout=2h30m10s
+`),
+		}, parsesOk, ""},
 		{"Parse: Invalid script", []opfunc{
 			opPawnfile(`[fp]
 script=if false; do
@@ -158,7 +224,6 @@ script=if false; do
 						break
 					}
 				}
-				opTerminate()
 				wg.Done()
 			}()
 			err = Main(opts)
