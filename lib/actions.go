@@ -277,12 +277,12 @@ func (a *SignalAction) terminate() {
 	// Set a time limit to termination
 	time.AfterFunc(2*time.Second, func() {
 		// Triggering this is a bug.
-		FailSafeExit()
+		deps.FailSafeExit()
 	})
 }
 
 func (a *SignalAction) Run() {
-	SignalNotify(a.sigchan, a.sig)
+	deps.SignalNotify(a.sigchan, a.sig)
 	go func() {
 	loop:
 		for {
@@ -294,7 +294,7 @@ func (a *SignalAction) Run() {
 					a.trigger(a.Triggered)
 				}
 			case <-a.termchan:
-				SignalReset(a.sig)
+				deps.SignalReset(a.sig)
 				break loop
 			}
 		}

@@ -79,7 +79,7 @@ func NewTerminalOutput(opts util.Options) *TerminalOutput {
 
 	var ret = &TerminalOutput{
 		updateInterval: time.Second * 2,
-		out:            NewTerminalStdout(),
+		out:            deps.NewTerminalStdout(),
 		Width:          60,
 		Verbose:        opts.IsSet("verbose"),
 		ProgTitle:      opts.Get("program-real-name", "pawnd"),
