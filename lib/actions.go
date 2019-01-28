@@ -668,26 +668,26 @@ func (a *CronAction) Receive(from, message string) {
 }
 
 func (a *CronAction) Run() {
-	trigtimer := time.NewTimer(0)
-	stopTimer(trigtimer)
-
-	resetTimer := func() {
+	resetTimer := func(tmr *time.Timer) {
 		next := a.sched.Next(time.Now())
 		fmt.Fprintln(a.Terminal().Verbose(), "Next:", next.String())
 		dur := time.Until(next)
-		stopTimer(trigtimer)
-		trigtimer.Reset(dur)
+		stopTimer(tmr)
+		tmr.Reset(dur)
 	}
 
 	go func() {
-		resetTimer()
+		trigtimer := time.NewTimer(0)
+		stopTimer(trigtimer)
+		resetTimer(trigtimer)
 	loop:
 		for {
 			select {
 			case <-trigtimer.C:
 				a.trigger(a.Triggered)
-				resetTimer()
+				resetTimer(trigtimer)
 			case <-a.termchan:
+				stopTimer(trigtimer)
 				break loop
 			}
 		}
