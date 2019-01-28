@@ -611,7 +611,7 @@ func (a *RestartAction) restart() {
 			"Configuration contained errors:", err)
 		return
 	}
-	fmt.Fprintln(a.Terminal().Verbose(), "Configuration updated. Restarting.")
+	fmt.Fprintln(GetTerminal("").Stdout(), "Configuration updated. Restarting.")
 	a.Send(ToAll, MsgRest)
 }
 
