@@ -21,6 +21,7 @@ var (
 	statusRun  = "run"
 	statusOk   = "ok"
 	statusFail = "fail"
+	statusDaemon = "daemon"
 
 	//
 	infoDaemon = "daemon"
@@ -176,6 +177,8 @@ func formatStatus(status, name string) string {
 		status = ansi.ColorCode("green+h") + "OK  " + ansi.Reset
 	case statusFail:
 		status = ansi.ColorCode("red+h") + "FAIL" + ansi.Reset
+	case statusDaemon:
+		status = ansi.ColorCode("blue+h") + "DAEM" + ansi.Reset
 	case "":
 		status = ansi.ColorCode("grey+h") + "WAIT" + ansi.Reset
 	}
@@ -387,6 +390,8 @@ func (t *terminal) SetStatus(status string, info string) {
 	}
 
 	switch status {
+	case statusDaemon:
+		fallthrough
 	case statusRun:
 		t.statusMutex.Lock()
 		t.startTime = time.Now()

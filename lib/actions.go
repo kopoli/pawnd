@@ -386,10 +386,12 @@ func (a *ExecAction) RunCommand() error {
 	}
 
 	info := ""
+	status := statusRun
 	if a.Daemon {
 		info = infoDaemon
+		status = statusDaemon
 	}
-	term.SetStatus(statusRun, info)
+	term.SetStatus(status, info)
 
 	err = a.cmd.Wait()
 	if err == nil {
