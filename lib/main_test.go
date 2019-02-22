@@ -113,77 +113,52 @@ func Test_pawndRunning(t *testing.T) {
 			`[something]
 contents=but missing`,
 			"should have exactly one of"),
-		{"Parse: Empty file hysteresis", []opfunc{
-			opPawnfile(`[fp]
+		PawnfileError("Parse: Empty file hysteresis", `[fp]
 file=abc
 hysteresis=
-`),
-		}, nil, "Duration"},
-		{"Parse: Invalid file hysteresis", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileError("Parse: Invalid file hysteresis", `[fp]
 file=abc
 hysteresis=c
-`),
-		}, nil, "Duration"},
-		{"Parse: Invalid file hysteresis 2", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileError("Parse: Invalid file hysteresis 2", `[fp]
 file=abc
 hysteresis=10
-`),
-		}, nil, "Duration"},
-		{"Parse: Proper file hysteresis", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileOk("Parse: Proper file hysteresis", `[fp]
 file=abc
 hysteresis=100ms
 `),
-		}, parsesOk, ""},
-		{"Parse: Proper file hysteresis 2", []opfunc{
-			opPawnfile(`[fp]
+		PawnfileOk("Parse: Proper file hysteresis 2", `[fp]
 file=abc
 hysteresis=2s
 `),
-		}, parsesOk, ""},
-		{"Parse: Invalid exec cooldown", []opfunc{
-			opPawnfile(`[fp]
+		PawnfileError("Parse: Invalid exec cooldown", `[fp]
 exec=false
 cooldown
-`),
-		}, nil, "Duration"},
-		{"Parse: Invalid exec cooldown 2", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileError("Parse: Invalid exec cooldown 2", `[fp]
 exec=false
 cooldown=1
-`),
-		}, nil, "Duration"},
-		{"Parse: Proper exec cooldown", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileOk("Parse: Proper exec cooldown", `[fp]
 exec=false
 cooldown=1s
 `),
-		}, parsesOk, ""},
-		{"Parse: Invalid exec timeout", []opfunc{
-			opPawnfile(`[fp]
+		PawnfileError("Parse: Invalid exec timeout", `[fp]
 exec=false
 timeout="something"
-`),
-		}, nil, "Duration"},
-		{"Parse: Invalid exec timeout 2", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileError("Parse: Invalid exec timeout 2", `[fp]
 exec=false
 timeout==
-`),
-		}, nil, "Duration"},
-		{"Parse: Proper exec timeout", []opfunc{
-			opPawnfile(`[fp]
+`, "Duration"),
+		PawnfileOk("Parse: Proper exec timeout", `[fp]
 exec=false
-timeout=2h30m10s
+cooldown=2h30m10s
 `),
-		}, parsesOk, ""},
-		{"Parse: Invalid script", []opfunc{
-			opPawnfile(`[fp]
-script=if false; do
-`),
-		}, nil, "Script parse error"},
+		PawnfileError("Parse: Invalid exec script", `[fp]
+script=if false; do`, "Script parse error"),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,7 +190,10 @@ script=if false; do
 			var opErr error
 
 			go func() {
-				opSleep(time.Millisecond * 10)()
+				err := opSleep(time.Millisecond * 10)()
+				if err != nil {
+					opErr = fmt.Errorf("Internal error, sleep failed: %v\n", err)
+				}
 				for i := range tt.ops {
 					err := tt.ops[i]()
 					if err != nil {
