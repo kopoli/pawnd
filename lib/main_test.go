@@ -21,6 +21,7 @@ func Test_pawndRunning(t *testing.T) {
 
 	deps = defaultDeps
 	deps.FailSafeExit = func() {
+		PrintGoroutines()
 		panic("Failsafe exit!")
 	}
 	deps.NewTerminalStdout = func() io.Writer {
@@ -28,7 +29,7 @@ func Test_pawndRunning(t *testing.T) {
 	}
 
 	// type sigchan chan<-os.Signal
-	sigchans := map[os.Signal]chan<-os.Signal{
+	sigchans := map[os.Signal]chan<- os.Signal{
 		os.Interrupt: nil,
 	}
 
@@ -49,7 +50,6 @@ func Test_pawndRunning(t *testing.T) {
 	pawnfile := filepath.Join(testdir, "Pawnfile")
 
 	opts := util.NewOptions()
-	opts.Set("configuration-file", pawnfile)
 
 	type opfunc func() error
 
@@ -59,6 +59,12 @@ func Test_pawndRunning(t *testing.T) {
 			return nil
 		}
 	}
+
+	opPanic := func() error {
+		fmt.Println("Sending panic")
+		panic("Did not terminate")
+	}
+	_ = opPanic
 
 	opTerminate := func() error {
 		sigchans[os.Interrupt] <- os.Interrupt
@@ -74,6 +80,35 @@ func Test_pawndRunning(t *testing.T) {
 	parsesOk := []opfunc{
 		opSleep(time.Millisecond * 10),
 		opTerminate,
+		// opSleep(time.Millisecond * 10),
+		// opPanic,
+	}
+
+	opPrintOutput := func() func() error {
+		return func() error {
+			fmt.Println(buf.String())
+			return nil
+		}
+	}
+	_ = opPrintOutput
+
+	opSetOpt := func(key string, value string) func() error {
+		return func() error {
+			opts.Set(key, value)
+			return nil
+		}
+	}
+
+	opSetVerbose := opSetOpt("verbose", "t")
+
+	opExpectOutput := func(expectRe string) func() error {
+		re := regexp.MustCompile(expectRe)
+		return func() error {
+			if !re.MatchString(buf.String()) {
+				return fmt.Errorf("Could not find regexp: %s", expectRe)
+			}
+			return nil
+		}
 	}
 
 	type IntegrationTest struct {
@@ -101,6 +136,16 @@ func Test_pawndRunning(t *testing.T) {
 			},
 			nil,
 			errorRe,
+		}
+	}
+	PawnfileOps := func(name string, contents string, preops []opfunc, ops []opfunc) IntegrationTest {
+		preops = append(preops, opPawnfile(contents))
+		ops = append(ops, parsesOk...)
+		return IntegrationTest{
+			name,
+			preops,
+			ops,
+			"",
 		}
 	}
 
@@ -157,11 +202,72 @@ timeout==
 exec=false
 cooldown=2h30m10s
 `),
-		PawnfileError("Parse: Invalid exec script", `[fp]
-script=if false; do`, "Script parse error"),
+		PawnfileError("Parse: Invalid script", `[fp]
+script=if false; do
+`, "Script parse error"),
+		PawnfileOk("Parse: Proper exec visible", `[fp]
+exec=false
+visible
+`),
+		PawnfileOk("Parse: Proper exec visible 2", `[fp]
+exec=false
+visible=
+`),
+		PawnfileOk("Parse: Proper exec visible 3", `[fp]
+exec=false
+visible=no
+`),
+		PawnfileOk("Parse: Proper exec visible 3", `[fp]
+exec=false
+visible=no
+`),
+		PawnfileOps("Running simple command", `[a]
+exec=go run inttest.go jeejee
+init
+`,
+			nil, []opfunc{
+				opSleep(time.Millisecond * 500),
+				opExpectOutput("inttest.*jeejee"),
+			}),
+		PawnfileOps("Running simple command with script", `[a]
+script=go run inttest.go jeejee
+init
+`,
+			nil, []opfunc{
+				opSleep(time.Millisecond * 500),
+				opExpectOutput("inttest.*jeejee"),
+			}),
+		PawnfileOps("Running proper cron", `[crontest]
+cron=0 0 8,15 * * mon-fri
+`,
+			[]opfunc{
+				opSetVerbose,
+			}, []opfunc{
+				opSleep(time.Millisecond * 500),
+				// opPrintOutput(),
+				opExpectOutput("Next: 20"),
+			}),
+		PawnfileOps("Triggering succeeding task", `[a]
+init
+script=go run inttest.go jeejee
+succeeded=b
+
+[b]
+script=go run inttest.go joojoo
+`,
+			[]opfunc{
+				opSetVerbose,
+			},
+			[]opfunc{
+				opSleep(time.Millisecond * 100),
+				opPrintOutput(),
+				opExpectOutput("inttest.*jeejee"),
+				opExpectOutput("inttest.*joojoo"),
+			}),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			err := os.RemoveAll(testdir)
 			if err != nil {
 				t.Error("Could not remove test directory:", err)
@@ -171,6 +277,9 @@ script=if false; do`, "Script parse error"),
 			if err != nil {
 				t.Fatal("Could not create test directory:", err)
 			}
+
+			opts = util.NewOptions()
+			opts.Set("configuration-file", pawnfile)
 
 			buf.Reset()
 
@@ -193,10 +302,12 @@ script=if false; do`, "Script parse error"),
 					opErr = fmt.Errorf("Internal error, sleep failed: %v\n", err)
 				}
 				for i := range tt.ops {
+					fmt.Println("Running op", spew.Sdump(tt.ops[i]))
 					err := tt.ops[i]()
 					if err != nil {
 						opErr = fmt.Errorf("Op %d failed: %v\n  op: %v",
 							i, err, spew.Sdump(tt.ops[i]))
+						_ = opTerminate()
 						break
 					}
 				}
