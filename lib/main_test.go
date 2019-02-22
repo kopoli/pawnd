@@ -162,17 +162,15 @@ script=if false; do`, "Script parse error"),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := os.MkdirAll(testdir, 0755)
+			err := os.RemoveAll(testdir)
+			if err != nil {
+				t.Error("Could not remove test directory:", err)
+			}
+
+			err = os.MkdirAll(testdir, 0755)
 			if err != nil {
 				t.Fatal("Could not create test directory:", err)
 			}
-
-			defer func() {
-				err := os.RemoveAll(testdir)
-				if err != nil {
-					t.Error("Could not remove test directory:", err)
-				}
-			}()
 
 			buf.Reset()
 
