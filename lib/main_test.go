@@ -278,6 +278,21 @@ script=go run inttest.go this failed
 				opPrintOutput(),
 				opExpectOutput("inttest.*this failed"),
 			}),
+
+		IntegrationTest{
+			name: "If Pawnfile is updated, pawnd restarts",
+			preops: []opfunc{
+				opSetVerbose,
+				opPawnfile("[something]\nscript=:"),
+			},
+			ops: []opfunc{
+				opExpectOutput("something"),
+				opPawnfile("[else happens]\nscript=! :"),
+				opExpectOutput("File.*Pawnfile.*changed"),
+				opPrintOutput(),
+			},
+			ExpectedErrorRe: "Main restarted",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
