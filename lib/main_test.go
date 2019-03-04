@@ -71,17 +71,20 @@ func Test_pawndRunning(t *testing.T) {
 		return nil
 	}
 
-	opPawnfile := func(contents string) func() error {
+	opFile := func(name, contents string) func() error {
+		name = filepath.Join(testdir, name)
 		return func() error {
-			return ioutil.WriteFile(pawnfile, []byte(contents), 0666)
+			return ioutil.WriteFile(name, []byte(contents), 0666)
 		}
+	}
+
+	opPawnfile := func(contents string) func() error {
+                return opFile("Pawnfile", contents)
 	}
 
 	parsesOk := []opfunc{
 		opSleep(time.Millisecond * 10),
 		opTerminate,
-		// opSleep(time.Millisecond * 10),
-		// opPanic,
 	}
 
 	opPrintOutput := func() func() error {
@@ -293,6 +296,35 @@ script=go run inttest.go this failed
 			},
 			ExpectedErrorRe: "Main restarted",
 		},
+
+		PawnfileOps("Files to check for changes not found", `[filechange]
+file=*.notfound
+changed=changedtask
+`,
+			[]opfunc{
+				opSetVerbose,
+			},
+			[]opfunc{
+				opExpectOutput("Creating file watcher.*filechange.*failed"),
+			}),
+
+		PawnfileOps("Triggering with a file change", fmt.Sprintf(`[filechange]
+file=%s/*.tmp
+changed=changedtask
+
+[changedtask]
+script=:
+`, testdir),
+			[]opfunc{
+				opSetVerbose,
+				opFile("something.tmp", "contents here"),
+			},
+			[]opfunc{
+				opExpectOutput("changedtask"),
+				opFile("something.tmp", "changed contents"),
+				opExpectOutput("Triggering changedtask"),
+				opPrintOutput(),
+			}),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
