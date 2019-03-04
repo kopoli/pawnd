@@ -222,11 +222,8 @@ func (a *FileAction) Run() {
 ///
 
 func CheckSignal(name string) error {
-	_, ok := SupportedSignals[name]
-	if !ok {
-		return fmt.Errorf("signal name \"%s\" is not supported", name)
-	}
-	return nil
+	_, err := deps.SupportedSignal(name)
+	return err
 }
 
 type SignalAction struct {
@@ -243,8 +240,12 @@ type SignalAction struct {
 }
 
 func NewSignalAction(signame string) (*SignalAction, error) {
-	if signame != "interrupt" {
-		err := CheckSignal(signame)
+	var sig os.Signal
+	if signame == "interrupt" {
+		sig = os.Interrupt
+	} else {
+		var err error
+		sig, err = deps.SupportedSignal(signame)
 		if err != nil {
 			return nil, err
 		}
@@ -253,13 +254,8 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
 		termchan: make(chan bool, 1),
+		sig: sig,
 	}
-	if signame == "interrupt" {
-		ret.sig = os.Interrupt
-	} else {
-		ret.sig = SupportedSignals[signame]
-	}
-
 	return &ret, nil
 }
 

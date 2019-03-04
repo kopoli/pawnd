@@ -21,6 +21,7 @@ type Deps struct {
 	NewTerminalStdout func() io.Writer
 	SignalNotify      func(c chan<- os.Signal, sig ...os.Signal)
 	SignalReset       func(sig ...os.Signal)
+	SupportedSignal   func(name string) (os.Signal, error)
 }
 
 var deps = Deps{
@@ -36,6 +37,13 @@ var deps = Deps{
 	},
 	SignalReset: func(sig ...os.Signal) {
 		signal.Reset(sig...)
+	},
+	SupportedSignal: func(name string) (os.Signal, error)  {
+		_, ok := SupportedSignals[name]
+		if !ok {
+			return nil, fmt.Errorf("signal name \"%s\" is not supported", name)
+		}
+		return SupportedSignals[name], nil
 	},
 }
 
