@@ -104,10 +104,14 @@ func Test_pawndRunning(t *testing.T) {
 	opExpectOutput := func(expectRe string) func() error {
 		re := regexp.MustCompile(expectRe)
 		return func() error {
-			if !re.MatchString(buf.String()) {
-				return fmt.Errorf("Could not find regexp: %s", expectRe)
+			// Poll quickly if given string is in the output
+			for i := 0; i < 1000; i++ {
+				if re.MatchString(buf.String()) {
+					return nil
+				}
+				time.Sleep(time.Millisecond * 2)
 			}
-			return nil
+			return fmt.Errorf("Could not find regexp: %s", expectRe)
 		}
 	}
 
@@ -149,7 +153,6 @@ func Test_pawndRunning(t *testing.T) {
 		}
 	}
 
-	slowOpDur := time.Millisecond * 200
 	tests := []IntegrationTest{
 		{"No pawnfile", nil, nil, "Could not load config.*no such file"},
 		PawnfileOk("Empty pawnfile, parses ok", ""),
@@ -227,7 +230,6 @@ exec=go run inttest.go jeejee
 init
 `,
 			nil, []opfunc{
-				opSleep(slowOpDur),
 				opExpectOutput("inttest.*jeejee"),
 			}),
 		PawnfileOps("Running simple command with script", `[a]
@@ -235,7 +237,8 @@ script=go run inttest.go jeejee
 init
 `,
 			nil, []opfunc{
-				opSleep(slowOpDur),
+				// Use opSleep to make the function used.
+				opSleep(time.Millisecond),
 				opExpectOutput("inttest.*jeejee"),
 			}),
 		PawnfileOps("Running proper cron", `[crontest]
@@ -244,7 +247,6 @@ cron=0 0 8,15 * * mon-fri
 			[]opfunc{
 				opSetVerbose,
 			}, []opfunc{
-				opSleep(slowOpDur),
 				opExpectOutput("Next: 20"),
 			}),
 		PawnfileOps("Triggering succeeding task", `[inttest]
@@ -259,7 +261,6 @@ script=go run inttest.go piip
 				opSetVerbose,
 			},
 			[]opfunc{
-				opSleep(slowOpDur),
 				opExpectOutput("inttest.*piip"),
 			}),
 		PawnfileOps("Triggering failing task", `[inttest]
@@ -274,7 +275,6 @@ script=go run inttest.go this failed
 				opSetVerbose,
 			},
 			[]opfunc{
-				opSleep(slowOpDur),
 				opPrintOutput(),
 				opExpectOutput("inttest.*this failed"),
 			}),
