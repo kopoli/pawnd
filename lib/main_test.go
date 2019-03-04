@@ -149,6 +149,7 @@ func Test_pawndRunning(t *testing.T) {
 		}
 	}
 
+	slowOpDur := time.Millisecond * 200
 	tests := []IntegrationTest{
 		{"No pawnfile", nil, nil, "Could not load config.*no such file"},
 		PawnfileOk("Empty pawnfile, parses ok", ""),
@@ -226,7 +227,7 @@ exec=go run inttest.go jeejee
 init
 `,
 			nil, []opfunc{
-				opSleep(time.Millisecond * 500),
+				opSleep(slowOpDur),
 				opExpectOutput("inttest.*jeejee"),
 			}),
 		PawnfileOps("Running simple command with script", `[a]
@@ -234,7 +235,7 @@ script=go run inttest.go jeejee
 init
 `,
 			nil, []opfunc{
-				opSleep(time.Millisecond * 500),
+				opSleep(slowOpDur),
 				opExpectOutput("inttest.*jeejee"),
 			}),
 		PawnfileOps("Running proper cron", `[crontest]
@@ -243,26 +244,39 @@ cron=0 0 8,15 * * mon-fri
 			[]opfunc{
 				opSetVerbose,
 			}, []opfunc{
-				opSleep(time.Millisecond * 500),
-				// opPrintOutput(),
+				opSleep(slowOpDur),
 				opExpectOutput("Next: 20"),
 			}),
-		PawnfileOps("Triggering succeeding task", `[a]
+		PawnfileOps("Triggering succeeding task", `[inttest]
 init
-script=go run inttest.go jeejee
-succeeded=b
+script=:
+succeeded=succtask
 
-[b]
-script=go run inttest.go joojoo
+[succtask]
+script=go run inttest.go piip
 `,
 			[]opfunc{
 				opSetVerbose,
 			},
 			[]opfunc{
-				opSleep(time.Millisecond * 100),
+				opSleep(slowOpDur),
+				opExpectOutput("inttest.*piip"),
+			}),
+		PawnfileOps("Triggering failing task", `[inttest]
+init
+script=! :
+failed=failtask
+
+[failtask]
+script=go run inttest.go this failed
+`,
+			[]opfunc{
+				opSetVerbose,
+			},
+			[]opfunc{
+				opSleep(slowOpDur),
 				opPrintOutput(),
-				opExpectOutput("inttest.*jeejee"),
-				opExpectOutput("inttest.*joojoo"),
+				opExpectOutput("inttest.*this failed"),
 			}),
 	}
 	for _, tt := range tests {
