@@ -273,12 +273,6 @@ func (a *SignalAction) Receive(from, message string) {
 func (a *SignalAction) terminate() {
 	fmt.Fprintln(a.Terminal().Verbose(), "Terminating due to signal.")
 	a.Send(ToAll, MsgTerm)
-
-	// Set a time limit to termination
-	time.AfterFunc(2*time.Second, func() {
-		// Triggering this is a bug.
-		deps.FailSafeExit()
-	})
 }
 
 func (a *SignalAction) Run() {

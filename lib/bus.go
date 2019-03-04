@@ -3,6 +3,7 @@ package pawnd
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	glob "github.com/ryanuber/go-glob"
 )
@@ -31,11 +32,13 @@ var (
 
 // EventBus conveys messages to Listeners
 type EventBus struct {
-	links      map[string]BusLink
-	msgchan    chan Message
-	mutex      sync.Mutex
-	wg         sync.WaitGroup
-	restarting bool
+	links         map[string]BusLink
+	msgchan       chan Message
+	mutex         sync.Mutex
+	wg            sync.WaitGroup
+	failsafeTimer *time.Timer
+	done          chan struct{}
+	restarting    bool
 }
 
 // BusLink is the interface for sending messages to the bus
@@ -75,6 +78,9 @@ func (eb *EventBus) Send(from, to, message string) {
 		eb.restarting = true
 		message = MsgTerm
 	}
+	if message == MsgTerm {
+		eb.failsafeTimer.Reset(2 * time.Second)
+	}
 	eb.msgchan <- Message{from, to, message}
 }
 
@@ -103,7 +109,21 @@ func NewEventBus() *EventBus {
 	var ret = EventBus{
 		links:   make(map[string]BusLink),
 		msgchan: make(chan Message),
+		done:    make(chan struct{}),
 	}
+
+	ret.failsafeTimer = time.NewTimer(0)
+	stopTimer(ret.failsafeTimer)
+
+	go func() {
+		select {
+		case <-ret.failsafeTimer.C:
+			deps.FailSafeExit()
+			return
+		case <-ret.done:
+		}
+		stopTimer(ret.failsafeTimer)
+	}()
 
 	ret.wg.Add(1)
 	go func() {
@@ -128,6 +148,8 @@ func NewEventBus() *EventBus {
 		}
 		ret.wg.Done()
 	}()
+
+	close(ret.done)
 
 	return &ret
 }
