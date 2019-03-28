@@ -157,7 +157,7 @@ func Test_pawndRunning(t *testing.T) {
 	}
 
 	tests := []IntegrationTest{
-		{"No pawnfile", nil, nil, "Could not load config.*no such file"},
+		{"No pawnfile", nil, nil, "Could not load config.*"},
 		PawnfileOk("Empty pawnfile, parses ok", ""),
 		PawnfileError("Parse: Section type missing", `[something]`,
 			"should have exactly one of"),
