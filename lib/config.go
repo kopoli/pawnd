@@ -134,37 +134,22 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 		return err != nil
 	}
 	for _, sect := range file.Sections() {
-		if sect.HasKey("exec") || sect.HasKey("daemon") {
-			keyname := "exec"
+		if sect.HasKey("script") || sect.HasKey("exec") || sect.HasKey("daemon")  {
+			keyname := "script"
 			daemon := false
 			if sect.HasKey("daemon") {
 				daemon = true
 				keyname = "daemon"
+			} else if sect.HasKey("exec"){
+				keyname = "exec"
 			}
-			key := sect.Key(keyname)
-			a := NewExecAction(splitWsQuote(key.String())...)
-			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
-			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
-			a.Daemon = daemon
-			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
-			a.Failed = splitWsQuote(sect.Key("failed").Value())
-			a.Visible = sect.Key("visible").MustBool(true)
-
-			bus.Register(ActionName(sect.Name()), a)
-
-			if sect.HasKey("init") {
-				a := NewInitAction(ActionName(sect.Name()))
-				name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
-				bus.Register(name, a)
-				bus.LinkStopped(name)
-			}
-		} else if sect.HasKey("script") {
-			a, err := NewShAction(sect.Key("script").String())
+			a, err := NewShAction(sect.Key(keyname).String())
 			if errhandle("script action", sect.Name(), err) {
 				continue
 			}
 			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
 			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
+			a.Daemon = daemon
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())
 			a.Visible = sect.Key("visible").MustBool(true)

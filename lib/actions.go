@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	util "github.com/kopoli/go-util"
@@ -254,7 +252,7 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
 		termchan: make(chan bool, 1),
-		sig: sig,
+		sig:      sig,
 	}
 	return &ret, nil
 }
@@ -294,163 +292,19 @@ func (a *SignalAction) Run() {
 
 ///
 
-type ExecAction struct {
-	Args []string
-
-	Daemon    bool
-	Succeeded []string
-	Failed    []string
-
-	Cooldown time.Duration
-	Timeout  time.Duration
-
-	cmd          *exec.Cmd
-	wg           sync.WaitGroup
-	startchan    chan bool
-	termchan     chan bool
-	timeoutTimer *time.Timer
-
-	BaseAction
-}
-
-func NewExecAction(args ...string) *ExecAction {
-	ret := &ExecAction{
-		Args:         args,
-		Cooldown:     3000 * time.Millisecond,
-		startchan:    make(chan bool, 1),
-		termchan:     make(chan bool, 1),
-		timeoutTimer: time.NewTimer(0),
-	}
-	stopTimer(ret.timeoutTimer)
-	ret.Visible = true
-
-	return ret
-}
-
-func (a *ExecAction) Run() {
-	go func() {
-	loop:
-		for {
-			select {
-			case <-a.timeoutTimer.C:
-				fmt.Fprintln(a.Terminal().Verbose(), "Timed out")
-				_ = a.Kill()
-			case <-a.startchan:
-				err := a.RunCommand()
-				if err != nil {
-					fmt.Fprintln(a.Terminal().Stderr(),
-						"Running command failed:", err)
-					break loop
-				}
-			case <-a.termchan:
-				_ = a.Kill()
-				break loop
-			}
-		}
-		a.bus.LinkStopped(a.name)
-	}()
-}
-
-func (a *ExecAction) RunCommand() error {
-	a.wg.Add(1)
-	defer a.wg.Done()
-
-	starttime := time.Now()
-	term := a.Terminal()
-
-	if a.Timeout != 0 {
-		a.timeoutTimer.Reset(a.Timeout)
-		defer stopTimer(a.timeoutTimer)
-	}
-	a.cmd = exec.Command(a.Args[0], a.Args[1:]...)
-	a.cmd.Stdout = term.Stdout()
-	a.cmd.Stderr = term.Stderr()
-	err := a.cmd.Start()
-	if err != nil {
-		a.cmd = nil
-		fmt.Fprintln(term.Stderr(), "Error: Starting command failed:", err)
-		return err
-	}
-
-	info := ""
-	status := statusRun
-	if a.Daemon {
-		info = infoDaemon
-		status = statusDaemon
-	}
-	term.SetStatus(status, info)
-
-	err = a.cmd.Wait()
-	if err == nil {
-		a.trigger(a.Succeeded)
-		term.SetStatus(statusOk, "")
-	} else {
-		info = ""
-		if exitError, ok := err.(*exec.ExitError); ok {
-			waitstatus := exitError.Sys().(syscall.WaitStatus)
-			info = fmt.Sprintf("Failed with code: %d",
-				waitstatus.ExitStatus())
-		}
-		a.trigger(a.Failed)
-		term.SetStatus(statusFail, info)
-	}
-	a.cmd = nil
-
-	cooldown := a.Cooldown - time.Since(starttime)
-	if cooldown < 0 {
-		cooldown = 0
-	}
-
-	select {
-	case <-a.termchan:
-		return fmt.Errorf("Received terminate during cooldown")
-
-	case <-time.After(cooldown):
-	}
-
-	return nil
-}
-
-func (a *ExecAction) Kill() error {
-	var err error
-	if a.cmd != nil && a.cmd.Process != nil {
-		err = a.cmd.Process.Kill()
-		fmt.Fprintln(a.Terminal().Verbose(), "Terminated process")
-	}
-	return err
-}
-
-func (a *ExecAction) Receive(from, message string) {
-	switch message {
-	case MsgTrig:
-		fmt.Fprintln(a.Terminal().Verbose(), "Running command:", a.Args)
-
-		// If not a daemon, wait until completion
-		if !a.Daemon {
-			a.wg.Wait()
-		} else {
-			_ = a.Kill()
-		}
-		a.startchan <- true
-
-	case MsgTerm:
-		fmt.Fprintln(a.Terminal().Verbose(), "Received terminate!")
-		a.termchan <- true
-	}
-}
-
-///
-
 type ShAction struct {
 	Cooldown  time.Duration
 	Timeout   time.Duration
+	Daemon    bool
 	Succeeded []string
 	Failed    []string
 
 	script    *syntax.File
 	startchan chan bool
 	termchan  chan bool
-	cancel    context.CancelFunc
+
+	cancelMutex sync.RWMutex
+	cancel      context.CancelFunc
 
 	BaseAction
 }
@@ -496,16 +350,24 @@ func (a *ShAction) RunCommand() error {
 	i.KillTimeout = -1
 
 	ctx := context.Background()
+	a.cancelMutex.Lock()
 	if a.Timeout != 0 {
 		ctx, a.cancel = context.WithTimeout(ctx, a.Timeout)
 		defer func() {
-			a.cancel()
-			a.cancel = nil
+			a.Cancel()
 		}()
+	} else {
+		ctx, a.cancel = context.WithCancel(ctx)
 	}
+	a.cancelMutex.Unlock()
 
 	info := ""
-	term.SetStatus(statusRun, info)
+	status := statusRun
+	if a.Daemon {
+		info = infoDaemon
+		status = statusDaemon
+	}
+	term.SetStatus(status, info)
 
 	err = i.Run(ctx, a.script)
 	if err == nil {
@@ -535,9 +397,21 @@ func (a *ShAction) RunCommand() error {
 	return nil
 }
 
+func (a *ShAction) Cancel() {
+	a.cancelMutex.Lock()
+	if a.cancel != nil {
+		a.cancel()
+		a.cancel = nil
+	}
+	a.cancelMutex.Unlock()
+}
+
 func (a *ShAction) Receive(from, message string) {
 	switch message {
 	case MsgTrig:
+		if a.Daemon {
+			a.Cancel()
+		}
 		a.startchan <- true
 	case MsgTerm:
 		a.termchan <- true
@@ -557,11 +431,7 @@ func (a *ShAction) Run() {
 					break loop
 				}
 			case <-a.termchan:
-				c := a.cancel
-				if c != nil {
-					c()
-					a.cancel = nil
-				}
+				a.Cancel()
 				break loop
 			}
 		}
