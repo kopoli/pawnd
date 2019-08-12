@@ -336,9 +336,6 @@ func (a *ExecAction) Run() {
 				fmt.Fprintln(a.Terminal().Verbose(), "Timed out")
 				_ = a.Kill()
 			case <-a.startchan:
-				if a.Daemon {
-					_ = a.Kill()
-				}
 				err := a.RunCommand()
 				if err != nil {
 					fmt.Fprintln(a.Terminal().Stderr(),
@@ -431,6 +428,8 @@ func (a *ExecAction) Receive(from, message string) {
 		// If not a daemon, wait until completion
 		if !a.Daemon {
 			a.wg.Wait()
+		} else {
+			_ = a.Kill()
 		}
 		a.startchan <- true
 
