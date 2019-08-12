@@ -390,7 +390,8 @@ func (a *ShAction) RunCommand() error {
 
 	select {
 	case <-a.termchan:
-		return fmt.Errorf("Received terminate during cooldown")
+		a.Cancel()
+		return fmt.Errorf("Terminated by user")
 
 	case <-time.After(cooldown):
 	}
@@ -427,7 +428,7 @@ func (a *ShAction) Run() {
 				err := a.RunCommand()
 				if err != nil {
 					fmt.Fprintln(a.Terminal().Stderr(),
-						"Running script failed:", err)
+						"Running failed:", err)
 					break loop
 				}
 			case <-a.termchan:
