@@ -63,9 +63,10 @@ exec="/bin/sh -c 'sleep 2 && echo This fails 1>&2 && false'"
   - `cron`
   - `exec`
   - `daemon`
+  - `script`.
 
-- The keys trigger sections depending on their rules. The `exec` and `daemon`
-  keys run commands as well.
+- The keys trigger sections depending on their rules. The `exec`, `script` and
+  `daemon` keys run commands as well.
 
 ### Triggers
 
@@ -131,9 +132,12 @@ triggered=clean
 exec=make clean
 ```
 
-##### exec and daemon
+##### exec, script and daemon
 
 These triggers will run commands in addition to triggering additional sections.
+
+The `exec` and `script` are synonymous. They both run a POSIX compatible shell
+scripts.
 
 The difference between `exec` and `daemon` is that `exec` is expected to stop
 and `daemon` is supposed to run indefinitely.
