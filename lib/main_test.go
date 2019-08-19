@@ -79,7 +79,7 @@ func Test_pawndRunning(t *testing.T) {
 	}
 
 	opPawnfile := func(contents string) func() error {
-                return opFile("Pawnfile", contents)
+		return opFile("Pawnfile", contents)
 	}
 
 	parsesOk := []opfunc{
@@ -306,6 +306,17 @@ script=go run inttest.go this failed
 				opExpectOutput("something"),
 				opPawnfile("[else happens]\nscript=! :"),
 				opExpectOutput("File.*Pawnfile.*changed"),
+				opPrintOutput(),
+			},
+			ExpectedErrorRe: "Main restarted",
+		},
+		IntegrationTest{
+			name: "Explicit trigger of `pawnd-restart` restarts pawnd",
+			preops: []opfunc{
+				opSetVerbose,
+				opPawnfile("[a]\ninit\nscript=:\nsucceeded=pawnd-restart"),
+			},
+			ops: []opfunc{
 				opPrintOutput(),
 			},
 			ExpectedErrorRe: "Main restarted",
