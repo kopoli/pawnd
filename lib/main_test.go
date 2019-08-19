@@ -266,6 +266,20 @@ script=go run inttest.go piip
 			[]opfunc{
 				opExpectOutput("inttest.*piip"),
 			}),
+		PawnfileOps("Triggering succeeding task with quotes", `[inttest]
+init
+script=" : "
+succeeded=succtask
+
+[succtask]
+script=go run inttest.go piip
+`,
+			[]opfunc{
+				opSetVerbose,
+			},
+			[]opfunc{
+				opExpectOutput("inttest.*piip"),
+			}),
 		PawnfileOps("Triggering failing task", `[inttest]
 init
 script=! :
