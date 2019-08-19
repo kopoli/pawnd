@@ -1,4 +1,4 @@
-// Generated with by licrep version 0.2.0
+// Generated with by licrep version 0.2.1
 // https://github.com/kopoli/licrep
 // Called with: licrep -o licenses.go --prefix pawnd -i mow.cli/internal -i pawnd/lib
 
@@ -30,7 +30,7 @@ func pawndGetLicenses() (map[string]pawndLicense, error) {
 	}
 	data := map[string]EncodedLicense{
 
-		"github.com/ahmetalpbalkan/go-cursor": {
+		"github.com/ahmetalpbalkan/go-cursor": EncodedLicense{
 			Name: "Apache-2.0",
 			Text: `
 H4sIAAAAAAAC/9RaX5PbOHJ/x6foqCqVmSpa9vruktzek9YzvlXi1bhm5DiuVB5AsikiBgEuAI6G+fSp
@@ -98,7 +98,7 @@ W2OtSDPOzGqVSb0Vo9UUIRNTAJjgwpY8dZHLMc8UkjKwyAC/8fuzD9t397un+1dv12/4hf8Dbc0/cKFt
 liOaix9egPInC65SVAD4f2KpbLQnxBMRchQza2hUBVqawyAPCAf7jI454pK1UW8AsCC3/lKvtfifAAAA
 //8SR9vCFigAAA==`,
 		},
-		"github.com/jawher/mow.cli": {
+		"github.com/jawher/mow.cli": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/3xRvY7jNhjs+RSDre4AYvODVOm4Em0xkUiDos9xSUv0ioEsGiIVw28fUPbeYVNEjcDv
@@ -114,7 +114,23 @@ pGFvohbmSMlGGJkxN0qDYce0EcW+Zhq7vd6ploPJElJJITdayC1vuDSvEBJSgX/j0qCtWF1nKsL2plI6
 hsIobb6vHkTLKZgWbTZko1VDSbZTbfKIkHlP8gdKthqfElF6fe9b/h0QJWe1kNsWQn6K75WQfwMAAP//
 eVpV+1MEAAA=`,
 		},
-		"github.com/kopoli/go-util": {
+		"github.com/kopoli/go-terminal-size": EncodedLicense{
+			Name: "MIT",
+			Text: `
+H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpzKdAbY9EWEYk0KHpdH2mJjtjKoiHSDfL2xcjObrMnQZz5
+fscOHo20qEPnp+Tx2Ej7xNgqXj7m8DZkPHZP+P3X3/7AqxtHj1c3/eNmz9jWz+eQUogTQsLgZ3/8wNvs
+puz7AqfZe8QTusHNb75AjnDTBy5+TnFCPGYXpjC9waGLlw8WT8hDSEjxlN/d7OGmHi6l2AWXfY8+dtez
+n7LLpHcKo094zIPHQ3tHPDwtIr13IwsTaPY5wnvIQ7xmzD7lOXTEUSBM3XjtycPneAzncFcg+BI/sRxx
+Tb5YfBY4xz6c6OuXWJfrcQxpKNAHoj5esy+Q6HFps6Acv8QZyY8j6+Il+IQl6w93yw5Zv1Ch+V5Ropf3
+IZ6/JgmJna7zFNLgF0wfkeKi+LfvMr3Q+imOY3ynaF2c+kCJ0p+M0andMf7rlyy3604xh+5W93KAy4+r
+3kdpcOOIo78X5nuECe5/cWaST9lNObgRlzgvej/HfGbMVgKtXts9NwKyxdbob7IUJR54C9k+FNhLW+md
+xZ4bw5U9QK/B1QGvUpUFxF9bI9oW2jDZbGspygJSrepdKdUGLzsLpS1q2UgrSlgNErxTSdESWSPMquLK
+8hdZS3so2FpaRZxrbcCx5cbK1a7mBtud2epWgKsSSiup1kaqjWiEss+QCkpDfBPKoq14XZMU4ztbaUP+
+sNLbg5GbyqLSdSlMixeBWvKXWtyk1AGrmsumQMkbvhELSttKGEZrN3fYV4KeSI8r8JWVWlGMlVbW8JUt
+YLWx36F72YoC3MiWClkb3RSM6tRrWpGKcErcWKhqfLmINsv/rhXfCVEKXku1aQlMET+Xn/8LAAD//6Ye
+ih03BAAA`,
+		},
+		"github.com/kopoli/go-util": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpz6KE3xqItIhJpUPS6PtISHbGVRUOkG+Tti5Gd3WZPgjjz
@@ -130,7 +146,7 @@ YaW3ByM3lUWl61KYFi8CteQvtbhJqQNWNZdNgZI3fCMWlLaVMIzWbu6wrwQ9kR5X4CsrtaIYK62s4Stb
 wGpjv0P3shUFuJEtFbI2uikY1anXtCIV4ZS4sVDV+HIRbZb/XSu+E6IUvJZq0xKYIn4uP/8XAAD//6vn
 VXQ3BAAA`,
 		},
-		"github.com/kopoli/pawnd": {
+		"github.com/kopoli/pawnd": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpzKnpjLNoiIpEGRa/rIy3REVtZNES6Qd6+GNnZbfYkiDPf
@@ -146,7 +162,7 @@ Vnp7MHJTWVS6LoVp8SJQS/5Si5uUOmBVc9kUKHnDN2JBaVsJw2jt5g77StAT6XEFvrJSK4qx0soavrIF
 rDb2O3QvW1GAG9lSIWujm4JRnXpNK1IRTokbC1WNLxfRZvnfteI7IUrBa6k2LYEp4ufyM/svAAD//2/y
 Iu44BAAA`,
 		},
-		"github.com/mattn/go-colorable": {
+		"github.com/mattn/go-colorable": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxve+ihN8aiLaISaVD0uj7SEh2xkEVDpBrk3xcjO7vdngRx
@@ -162,7 +178,7 @@ K23IHzZ6fzJyV1lUui6FafEmUEv+Vou7lDphU3PZFCh5w3diRWlbCcNo7e4Ox0rQE+lxBb6xUiuKsdHK
 Gr6xBaw29jv0KFtRgBvZUiFbo5uCUZ16SytSEU6JOwtVjZ8uos36f2jFd0KUgtdS7VoCU8Sv5Vf2TwAA
 AP//SpF7+z0EAAA=`,
 		},
-		"github.com/mattn/go-isatty": {
+		"github.com/mattn/go-isatty": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xSzY6rNhTe8xSfZjUjoXRfVVU94ASrYEfGuWmWDjjBVwQjbDrN21d2cjt3uoric77f
@@ -178,7 +194,7 @@ kxQ5qErI5K8Q+5Nku0qhEnVJZYt3ipqR95o+pPgJRU1Yk6MkDdnRhBKqojKtPd0dK5qeGAfhIIVigscY
 heBKkkLlUEKq/6BH1tIcRLI2FrKVoskR6xTb1BmPOE4fLLFqfLmIkOn/oaWfXkpKasZ3bQT/vLzJ/g0A
 AP//AGNqrEsEAAA=`,
 		},
-		"github.com/mattn/go-zglob": {
+		"github.com/mattn/go-zglob": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxveynQG2PRFlGJNCh6XR9piY5YyKIhUg3y74uRnd1uT4I4
@@ -194,7 +210,7 @@ lTbkDxu9Pxm5qywqXZfCtHgTqCV/q8VdSp2wqblsCpS84TuxorSthGG0dneHYyXoifS4At9YqRXF2Ghl
 Dd/YAlYb+x16lK0owI1sqZCt0U3BqE69pRWpCKfEnYWqxk8X0Wb9P7TiOyFKwWupdi2BKeLX8iv7JwAA
 ///Y6fA7PQQAAA==`,
 		},
-		"github.com/mattn/go-zglob/fastwalk": {
+		"github.com/mattn/go-zglob/fastwalk": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRTW/jNhO+81c8yCkBhLxveynQG2PRFlGJNCh6XR9piY5YyKIhUg3y74uRnd1uT4I4
@@ -210,7 +226,7 @@ lTbkDxu9Pxm5qywqXZfCtHgTqCV/q8VdSp2wqblsCpS84TuxorSthGG0dneHYyXoifS4At9YqRXF2Ghl
 Dd/YAlYb+x16lK0owI1sqZCt0U3BqE69pRWpCKfEnYWqxk8X0Wb9P7TiOyFKwWupdi2BKeLX8iv7JwAA
 ///Y6fA7PQQAAA==`,
 		},
-		"github.com/mgutz/ansi": {
+		"github.com/mgutz/ansi": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzY7rJhTe+yk+zWpGsqZ/u+4Ym8SoNkSY3DRLYpMxlWMiwB2lT19Bcjt3urLMOd/v
@@ -226,7 +242,7 @@ UWhEW1PZ442iZeStpXcpfkTVEtaVqElHtjSjhGqozGsPd4eG5ifGQThIpZjgKUYluJKkUiWUkOo/6IH1
 tASRrE+FbKToSqQ6xSZ3xhOO0ztLqhpfLiJk/t/39NNLTUnL+LZP4B+XX4vi3wAAAP//SKx5nT0EAAA=
 `,
 		},
-		"github.com/pkg/errors": {
+		"github.com/pkg/errors": EncodedLicense{
 			Name: "FreeBSD",
 			Text: `
 H4sIAAAAAAAC/5SSQY/bNhOG7/wVL3LKfhD8tQV6aYqitDS2BpBJlaTW8VFrcWMCtrSQ6A323xdkdhGn
@@ -243,7 +259,23 @@ x1rdodZ7uicjStlZqrJdrXJUV5M2hzQ0OcjyC+xrcjWZJDSbkkmBdYZLd3NMaAOnjbvJCEXbhrekSko0
 Ok3Zs6U7SMM2HeAva/fyAN3lyOmOOksilzdfbJFvEryBrO45Yb8ebrW1/PqdZGVljS+6V+LPAAAA//+5
 j2aZIAUAAA==`,
 		},
-		"github.com/ryanuber/go-glob": {
+		"github.com/robfig/cron": EncodedLicense{
+			Name: "MIT",
+			Text: `
+H4sIAAAAAAAC/1RSTY/jJhi+8ysezWlXsqbtHntjbDJGdSACsmmOjk1iKgciwDuaf1/hZHZ2T5bfj+fr
+pQ639+guU8aX+iu+/fnXN6hwwsZdFuuiHQOh8wxVJhKUTTb+sOMzIVtu0PGaCc0I2dl4dSm54OESJhvt
+6R2X2PtsxwrnaC3CGcPUx4utkAN6/46bjSl4hFPunXf+gh5DuL0jnEmeXEIK5/zWR4vej+hTCoPrsx0x
+hmG5Wp/7XPjObrYJX/Jk8aQfG09fV5LR9jOcJ6X30cKby1NYMqJNObqhYFRwfpiXsWj4aM/u6h4MZT3e
+/edAlmSrVWeFaxjduXztauu2nGaXpgqjK9CnJdsKqRQH68tW78c/QkSy81wQnE13r5/q1pki/VYCzY+I
+Ci/epnDFb05cwnmJ3qXJrjtjQAoVScvpPzvkUinj5zDP4a1YG4IfXXGU/ibETBb9Kfywq5f7A/Ahu+Ee
+93qA2+dVH6009fOMk30EZkc4j36eyYedWAyn3Pvs+hm3EFe+cvxfpT8TYloGLTfmQBUD19gp+Z03rMET
+1eD6qcKBm1buDQ5UKSrMEXIDKo74h4umAvt3p5jWkIrw7a7jrKnARd3tGy5e8bI3ELI80C03rIGRKIQP
+KM50AdsyVbdUGPrCO26OFTbcCKY12UgFih1Vhtf7jirs9monNQMVDYQUXGwUF69sy4R5BhcQEuw7Ewa6
+pV23UtG9aaVa9dVyd1T8tTVoZdcwpfHC0HH60jGsVOKIuqN8W6GhW/pa1ClI0zK1jj3UHVpWSoQLUAFa
+Gy5FsVFLYRStTQUjlfm5euCaVaCK6xLIRslthRKn3JQRLkgthWB3lBI1fruIVOv/XrNPLQ2jHRevujj+
+dfiZ/B8AAP//sSNflkQEAAA=`,
+		},
+		"github.com/ryanuber/go-glob": EncodedLicense{
 			Name: "MIT",
 			Text: `
 H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvqDnnpjLNoiKpEGRa/royzREQuZNES6gd++GNnZbfYkiDPf
@@ -259,7 +291,7 @@ kZvKotJ1KUyLN4Fa8rda3KXUAauay6ZAyRu+EQtK20oYRmt3d9hXgp5IjyvwlZVaUYyVVtbwlS1gtbHf
 oXvZigLcyJYKWRvdFIzq1GtakYpwStxZqGp8uYg2y/+uFd8JUQpeS7VpCUwRP5df2X8BAAD//9UdrcM0
 BAAA`,
 		},
-		"golang.org/x/sys/unix": {
+		"golang.org/x/crypto/ssh/terminal": EncodedLicense{
 			Name: "NewBSD",
 			Text: `
 H4sIAAAAAAAC/6SSwY/jph/F7/wVT3va+cnKb9VbuydikxjJMS7gyebosckEKTYRkBnNf1/BZDrZtlIP
@@ -277,7 +309,43 @@ bQqwH2zXNVQeipumYr/3rNWcNqjojm6Zwtd/IdJJUfaS7ZJlsYHq10pz3WuGrRBV5qyYfOQlU9/RCJVh
 4plJ0YRAaclLfX9MSGghNfnMiJZtG75lbcnSrkgqe67YA6jkKh3geSz29ADR58jpiXrFSF7eFbbIDwm+
 Aa0eebJ9O9wJpfitJhlZWd9wr8gfAQAA//+AUlb6xwUAAA==`,
 		},
-		"gopkg.in/fsnotify.v1": {
+		"golang.org/x/sync/errgroup": EncodedLicense{
+			Name: "NewBSD",
+			Text: `
+H4sIAAAAAAAC/6SSwY/jph/F7/wVT3va+cnKb9VbuydikxjJMS7gyebosckEKTYRkBnNf1/BZDrZtlIP
+PRkZeN/3PrzSXd68fT5FfB0f8Mu3b79Cnwy2DvQaT86HFej5jHwkwJtg/IuZVoRIM9kQvX26RusWDMuE
+azCwC4K7+tHkP092Gfwbjs7PocCrjSc4n7/uGsnsJnu045AECgze4GL8bGM0Ey7evdjJTIinISKeDI7u
+fHavdnnG6JbJpkshXSKzib8RAuB/+NlUgDt+uBndZDBfQ4Q3cbBLlhye3EvauiEgi4t2NAXiyQacbYhJ
+4H7aMv3FymTDeB7sbPzqnx3Y5R7Ch4OLd9N1NJ8myJ8m8F9MkFuwyY3X2Sxx+Hib/zsPF0/GYx6i8XY4
+h0/E+V3iyZB767c8rbH5WlJdhtkkM1vnns8GfBlXWNznXuZtYyCjW951nA+Yhzc8mVSOCdHBLJPzwaQe
+XLybXTR4pxEDJuPti5lw9G4mOX9wx/iamnHrDMLFjKk0uHibquRTXZb34oSQfRNdcwUlNnpPJQNX6KR4
+5BWrsD5A1wyl6A6Sb2uNWjQVkwq0rVCKVku+7rWQinyhClx9yRu0PYD96CRTCkKC77qGswp7KiVtNWeq
+AG/Lpq94uy2w7jVaoUnDd1yzCloUeejfr0FssGOyrGmr6Zo3XB/yvA3XbZq1EZJQdFRqXvYNleh62QnF
+kGJVXJUN5TtWrcBbtALskbUaqqZN83NKIvYtk8n6fUSsGRpO1w1Lg3LIiktW6pTmc1XyirWaNgVRHSs5
+bQqwH2zXNVQeipumYr/3rNWcNqjojm6Zwtd/IdJJUfaS7ZJlsYHq10pz3WuGrRBV5qyYfOQlU9/RCJVh
+9YoVpKKa5sGdFBuu1fe0XveKZ2a81UzKvtNctA+oxZ49MomS9opVGa5oU1SiaybkIYkmBpl9gX3NdM1k
+4plJ0YRAaclLfX9MSGghNfnMiJZtG75lbcnSrkgqe67YA6jkKh3geSz29ADR58jpiXrFSF7eFbbIDwm+
+Aa0eebJ9O9wJpfitJhlZWd9wr8gfAQAA//+AUlb6xwUAAA==`,
+		},
+		"golang.org/x/sys/unix": EncodedLicense{
+			Name: "NewBSD",
+			Text: `
+H4sIAAAAAAAC/6SSwY/jph/F7/wVT3va+cnKb9VbuydikxjJMS7gyebosckEKTYRkBnNf1/BZDrZtlIP
+PRkZeN/3PrzSXd68fT5FfB0f8Mu3b79Cnwy2DvQaT86HFej5jHwkwJtg/IuZVoRIM9kQvX26RusWDMuE
+azCwC4K7+tHkP092Gfwbjs7PocCrjSc4n7/uGsnsJnu045AECgze4GL8bGM0Ey7evdjJTIinISKeDI7u
+fHavdnnG6JbJpkshXSKzib8RAuB/+NlUgDt+uBndZDBfQ4Q3cbBLlhye3EvauiEgi4t2NAXiyQacbYhJ
+4H7aMv3FymTDeB7sbPzqnx3Y5R7Ch4OLd9N1NJ8myJ8m8F9MkFuwyY3X2Sxx+Hib/zsPF0/GYx6i8XY4
+h0/E+V3iyZB767c8rbH5WlJdhtkkM1vnns8GfBlXWNznXuZtYyCjW951nA+Yhzc8mVSOCdHBLJPzwaQe
+XLybXTR4pxEDJuPti5lw9G4mOX9wx/iamnHrDMLFjKk0uHibquRTXZb34oSQfRNdcwUlNnpPJQNX6KR4
+5BWrsD5A1wyl6A6Sb2uNWjQVkwq0rVCKVku+7rWQinyhClx9yRu0PYD96CRTCkKC77qGswp7KiVtNWeq
+AG/Lpq94uy2w7jVaoUnDd1yzCloUeejfr0FssGOyrGmr6Zo3XB/yvA3XbZq1EZJQdFRqXvYNleh62QnF
+kGJVXJUN5TtWrcBbtALskbUaqqZN83NKIvYtk8n6fUSsGRpO1w1Lg3LIiktW6pTmc1XyirWaNgVRHSs5
+bQqwH2zXNVQeipumYr/3rNWcNqjojm6Zwtd/IdJJUfaS7ZJlsYHq10pz3WuGrRBV5qyYfOQlU9/RCJVh
+9YoVpKKa5sGdFBuu1fe0XveKZ2a81UzKvtNctA+oxZ49MomS9opVGa5oU1SiaybkIYkmBpl9gX3NdM1k
+4plJ0YRAaclLfX9MSGghNfnMiJZtG75lbcnSrkgqe67YA6jkKh3geSz29ADR58jpiXrFSF7eFbbIDwm+
+Aa0eebJ9O9wJpfitJhlZWd9wr8gfAQAA//+AUlb6xwUAAA==`,
+		},
+		"gopkg.in/fsnotify.v1": EncodedLicense{
 			Name: "NewBSD",
 			Text: `
 H4sIAAAAAAAC/6SSwY7jKBeF9zzFUa+6f1n5Z3o5vSI2iZEc4wFc6SxdNqkgxSYCUqV6+xFUaio901Iv
@@ -295,7 +363,7 @@ xeQDL5n6hkaoDKtXrCAV1TQP7qTYcK2+pfO6Vzwz461mUvad5qL9glrs2QOTKGmvWJXhijZZJbpmQh5S
 08Qgsy+wr5mumUw8MymaECgteanvnwkJLaQmHx7Rsm3Dt6wtWboVqcueK/YFVHKVHvA8Fnt6gOiz5bSi
 XjGSj3eBLfIiwTeg1QNPsm+PO6EUv8UkIyvrG+4V+SsAAP//48/9mQEGAAA=`,
 		},
-		"gopkg.in/ini.v1": {
+		"gopkg.in/ini.v1": EncodedLicense{
 			Name: "Apache-2.0",
 			Text: `
 H4sIAAAAAAAC/9Ra3ZLbuHK+x1N0VJXKTBUte509Sc6eq1nP+KwSr8Y1kuO4UrkAyaaIGAS4ADga5ulT
@@ -362,6 +430,60 @@ jlUsO23pqlY9M3IBLG5i3r754Uf4ZL6aozX8VfJyvegJTv1fwOLnX3BDC6ZfYd3+hbbIDJySNJaINNrM
 ZFaZ1FIxSE2BMREEgAklbMnDFrmc7kyRKAOLDPA7Pzv7sHn3sN09vHq7fsMv/C/Yav5dC22znMxc/N4C
 lD9ZcJWZAsD/ETllo+0QT0TIwctkoVEVaGkOgzwgHOwzOqaGS7JGLQHAgtP6S73W4r8DAAD//xIOvKQN
 KAAA`,
+		},
+		"mvdan.cc/sh/expand": EncodedLicense{
+			Name: "NewBSD",
+			Text: `
+H4sIAAAAAAAC/6SSwW7jNheF93yKg1lNfgj52y666KxoibYIyKJKUvF4qUj0mIAlGiSdIA/Vp+iLFWSc
+2tMW6KIrEeLlved895Tu/Obtt2PE5/EBP/3w488FqmGx5oTt4OPvvz2Cnk7IJQHeBONfzPRIiDSTDdHb
+50u0bsGwTLgEA7sguIsfTf7zbJfBv+Hg/BwKvNp4hPP56y6RzG6yBzsOqUGBwRucjZ9tjGbC2bsXO5kJ
+8ThExKPBwZ1O7tUu3zC6ZbLpUUiPyGziL4QA+B++FxXgDh9qRjcZzJcQ4U0c7JJbDs/uJV1dEZDFRTua
+AvFoA042xNTgftoy/UXKZMN4Guxs/OM/K7DLPYQPBWfvpstobiLInyLwX0SQq7HJjZfZLHH42M3/nYeL
+R+MxD9F4O5zCDXHeSzwaci/96qc1Nj9LXZdhNklMOt/0Ht1pMh6LuxVl8DYGMrrlvaHzAfPwhmeTUjIh
+Ophlcj6YFIizd7OLBu9YYsBkvH0xEw7ezSSDCO4QX1NEruFBOJsxpQdnb1OmfMrN8p6gELIBomuuoMRa
+76hk4AqdFE+8YhVWe+iaoRTdXvJNrVGLpmJSgbYVStFqyVe9FlKRT1SBq0/5grZ7sK+dZEpBSPBt13BW
+YUelpK3mTBXgbdn0FW83BVa9Ris0afiWa1ZBiyIP/fsziDW2TJY1bTVd8YbrfZ635rpNs9ZCEoqOSs3L
+vqESXS87oRiSrYqrsqF8y6pH8BatAHtirYaqadN875KIXctkkn5vESuGhtNVw9KgbLLikpU6ubmdSl6x
+VtOmIKpjJadNAfaVbbuGyn1x7anYrz1rNacNKrqlG6bw+V+IdFKUvWTbJFmsofqV0lz3mmEjRJU5Kyaf
+eMnUFzRCZVi9YgWpqKZ5cCfFmmv1JZ1XveKZGW81k7LvNBftA2qxY09MoqS9YlWGK9pkleiaCblPTROD
+zL7Arma6ZjLxzKRoQqC05KW+LxMSWkhNbh7Rsk3DN6wtWboVqcuOK/YAKrlKBTyPxY7uIfpsOa2oV4zk
+411gi7xI8DVo9cST7GtxJ5Ti15hkZGV9xf1I/ggAAP//Rs5lGNAFAAA=`,
+		},
+		"mvdan.cc/sh/interp": EncodedLicense{
+			Name: "NewBSD",
+			Text: `
+H4sIAAAAAAAC/6SSwW7jNheF93yKg1lNfgj52y666KxoibYIyKJKUvF4qUj0mIAlGiSdIA/Vp+iLFWSc
+2tMW6KIrEeLlved895Tu/Obtt2PE5/EBP/3w488FqmGx5oTt4OPvvz2Cnk7IJQHeBONfzPRIiDSTDdHb
+50u0bsGwTLgEA7sguIsfTf7zbJfBv+Hg/BwKvNp4hPP56y6RzG6yBzsOqUGBwRucjZ9tjGbC2bsXO5kJ
+8ThExKPBwZ1O7tUu3zC6ZbLpUUiPyGziL4QA+B++FxXgDh9qRjcZzJcQ4U0c7JJbDs/uJV1dEZDFRTua
+AvFoA042xNTgftoy/UXKZMN4Guxs/OM/K7DLPYQPBWfvpstobiLInyLwX0SQq7HJjZfZLHH42M3/nYeL
+R+MxD9F4O5zCDXHeSzwaci/96qc1Nj9LXZdhNklMOt/0Ht1pMh6LuxVl8DYGMrrlvaHzAfPwhmeTUjIh
+Ophlcj6YFIizd7OLBu9YYsBkvH0xEw7ezSSDCO4QX1NEruFBOJsxpQdnb1OmfMrN8p6gELIBomuuoMRa
+76hk4AqdFE+8YhVWe+iaoRTdXvJNrVGLpmJSgbYVStFqyVe9FlKRT1SBq0/5grZ7sK+dZEpBSPBt13BW
+YUelpK3mTBXgbdn0FW83BVa9Ris0afiWa1ZBiyIP/fsziDW2TJY1bTVd8YbrfZ635rpNs9ZCEoqOSs3L
+vqESXS87oRiSrYqrsqF8y6pH8BatAHtirYaqadN875KIXctkkn5vESuGhtNVw9KgbLLikpU6ubmdSl6x
+VtOmIKpjJadNAfaVbbuGyn1x7anYrz1rNacNKrqlG6bw+V+IdFKUvWTbJFmsofqV0lz3mmEjRJU5Kyaf
+eMnUFzRCZVi9YgWpqKZ5cCfFmmv1JZ1XveKZGW81k7LvNBftA2qxY09MoqS9YlWGK9pkleiaCblPTROD
+zL7Arma6ZjLxzKRoQqC05KW+LxMSWkhNbh7Rsk3DN6wtWboVqcuOK/YAKrlKBTyPxY7uIfpsOa2oV4zk
+411gi7xI8DVo9cST7GtxJ5Ti15hkZGV9xf1I/ggAAP//Rs5lGNAFAAA=`,
+		},
+		"mvdan.cc/sh/syntax": EncodedLicense{
+			Name: "NewBSD",
+			Text: `
+H4sIAAAAAAAC/6SSwW7jNheF93yKg1lNfgj52y666KxoibYIyKJKUvF4qUj0mIAlGiSdIA/Vp+iLFWSc
+2tMW6KIrEeLlved895Tu/Obtt2PE5/EBP/3w488FqmGx5oTt4OPvvz2Cnk7IJQHeBONfzPRIiDSTDdHb
+50u0bsGwTLgEA7sguIsfTf7zbJfBv+Hg/BwKvNp4hPP56y6RzG6yBzsOqUGBwRucjZ9tjGbC2bsXO5kJ
+8ThExKPBwZ1O7tUu3zC6ZbLpUUiPyGziL4QA+B++FxXgDh9qRjcZzJcQ4U0c7JJbDs/uJV1dEZDFRTua
+AvFoA042xNTgftoy/UXKZMN4Guxs/OM/K7DLPYQPBWfvpstobiLInyLwX0SQq7HJjZfZLHH42M3/nYeL
+R+MxD9F4O5zCDXHeSzwaci/96qc1Nj9LXZdhNklMOt/0Ht1pMh6LuxVl8DYGMrrlvaHzAfPwhmeTUjIh
+Ophlcj6YFIizd7OLBu9YYsBkvH0xEw7ezSSDCO4QX1NEruFBOJsxpQdnb1OmfMrN8p6gELIBomuuoMRa
+76hk4AqdFE+8YhVWe+iaoRTdXvJNrVGLpmJSgbYVStFqyVe9FlKRT1SBq0/5grZ7sK+dZEpBSPBt13BW
+YUelpK3mTBXgbdn0FW83BVa9Ris0afiWa1ZBiyIP/fsziDW2TJY1bTVd8YbrfZ635rpNs9ZCEoqOSs3L
+vqESXS87oRiSrYqrsqF8y6pH8BatAHtirYaqadN875KIXctkkn5vESuGhtNVw9KgbLLikpU6ubmdSl6x
+VtOmIKpjJadNAfaVbbuGyn1x7anYrz1rNacNKrqlG6bw+V+IdFKUvWTbJFmsofqV0lz3mmEjRJU5Kyaf
+eMnUFzRCZVi9YgWpqKZ5cCfFmmv1JZ1XveKZGW81k7LvNBftA2qxY09MoqS9YlWGK9pkleiaCblPTROD
+zL7Arma6ZjLxzKRoQqC05KW+LxMSWkhNbh7Rsk3DN6wtWboVqcuOK/YAKrlKBTyPxY7uIfpsOa2oV4zk
+411gi7xI8DVo9cST7GtxJ5Ti15hkZGV9xf1I/ggAAP//Rs5lGNAFAAA=`,
 		},
 	}
 
