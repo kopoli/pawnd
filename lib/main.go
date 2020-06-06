@@ -1,10 +1,10 @@
 package pawnd
 
 import (
-	util "github.com/kopoli/go-util"
+	"github.com/kopoli/appkit"
 )
 
-func Main(opts util.Options) error {
+func Main(opts appkit.Options) error {
 	eb := NewEventBus()
 	ta := NewTerminalOutput(opts)
 

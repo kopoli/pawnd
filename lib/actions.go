@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	util "github.com/kopoli/go-util"
 	zglob "github.com/mattn/go-zglob"
 	"github.com/robfig/cron"
 	fsnotify "gopkg.in/fsnotify.v1"
@@ -146,7 +145,7 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 	var err error
 	ret.watch, err = fsnotify.NewWatcher()
 	if err != nil {
-		err = util.E.Annotate(err, "Could not create a new watcher")
+		err = ErrAnnotate(err, "Could not create a new watcher")
 		return nil, err
 	}
 

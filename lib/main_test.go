@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	util "github.com/kopoli/go-util"
+	"github.com/kopoli/appkit"
 )
 
 func Test_pawndRunning(t *testing.T) {
@@ -49,7 +49,7 @@ func Test_pawndRunning(t *testing.T) {
 	testdir := "integration-test"
 	pawnfile := filepath.Join(testdir, "Pawnfile")
 
-	opts := util.NewOptions()
+	opts := appkit.NewOptions()
 
 	type opfunc func() error
 
@@ -364,7 +364,7 @@ script=:
 				t.Fatal("Could not create test directory:", err)
 			}
 
-			opts = util.NewOptions()
+			opts = appkit.NewOptions()
 			opts.Set("configuration-file", pawnfile)
 
 			buf.Reset()

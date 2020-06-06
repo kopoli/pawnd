@@ -6,15 +6,15 @@ import (
 
 	cli "github.com/jawher/mow.cli"
 
-	"github.com/kopoli/go-util"
+	"github.com/kopoli/appkit"
 )
 
-func Cli(opts util.Options, argsin []string) (args []string, err error) {
+func Cli(opts appkit.Options, argsin []string) (args []string, err error) {
 	progName := opts.Get("program-name", "pawnd")
 
 	app := cli.App(progName, "For running errands and general minioning")
 	app.Spec = "[OPTIONS]"
-	app.Version("version v", util.VersionString(opts))
+	app.Version("version v", appkit.VersionString(opts))
 
 	conffile := "Pawnfile"
 

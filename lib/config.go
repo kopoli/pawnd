@@ -6,7 +6,6 @@ import (
 	"time"
 	"unicode"
 
-	util "github.com/kopoli/go-util"
 	ini "gopkg.in/ini.v1"
 )
 
@@ -38,7 +37,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		AllowBooleanKeys:    true,
 	}, filename)
 	if err != nil {
-		err = util.E.Annotate(err, "Could not load configuration")
+		err = ErrAnnotate(err, "Could not load configuration")
 		return nil, err
 	}
 
@@ -134,13 +133,13 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 		return err != nil
 	}
 	for _, sect := range file.Sections() {
-		if sect.HasKey("script") || sect.HasKey("exec") || sect.HasKey("daemon")  {
+		if sect.HasKey("script") || sect.HasKey("exec") || sect.HasKey("daemon") {
 			keyname := "script"
 			daemon := false
 			if sect.HasKey("daemon") {
 				daemon = true
 				keyname = "daemon"
-			} else if sect.HasKey("exec"){
+			} else if sect.HasKey("exec") {
 				keyname = "exec"
 			}
 			a, err := NewShAction(sect.Key(keyname).String())

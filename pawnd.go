@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kopoli/go-util"
-	"github.com/kopoli/pawnd/lib"
+	"github.com/kopoli/appkit"
+	pawnd "github.com/kopoli/pawnd/lib"
 )
 
 var (
@@ -26,7 +26,7 @@ func fault(err error, message string, arg ...string) {
 }
 
 func main() {
-	opts := util.NewOptions()
+	opts := appkit.NewOptions()
 
 	opts.Set("program-real-name", "Pawnd")
 	opts.Set("program-name", os.Args[0])

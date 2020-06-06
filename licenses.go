@@ -1,4 +1,4 @@
-// Generated with by licrep version 0.2.1
+// Generated with by licrep version v0.3.0
 // https://github.com/kopoli/licrep
 // Called with: licrep -o licenses.go --prefix pawnd -i mow.cli/internal -i pawnd/lib
 
@@ -114,6 +114,22 @@ pGFvohbmSMlGGJkxN0qDYce0EcW+Zhq7vd6ploPJElJJITdayC1vuDSvEBJSgX/j0qCtWF1nKsL2plI6
 hsIobb6vHkTLKZgWbTZko1VDSbZTbfKIkHlP8gdKthqfElF6fe9b/h0QJWe1kNsWQn6K75WQfwMAAP//
 eVpV+1MEAAA=`,
 		},
+		"github.com/kopoli/appkit": EncodedLicense{
+			Name: "MIT",
+			Text: `
+H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQrrYY2+MRVtEJNKg6HV9pCU6YiuLhkg3yNsXIzu7zZ4Eceb7
+HTt4NNKiDp2fksdjI+0TY6t4+ZjD25Dx2D3h+7fv3/DqxtHj1U3/uNkztvXzOaQU4oSQMPjZHz/wNrsp
++77AafYe8YRucPObL5Aj3PSBi59TnBCP2YUpTG9w6OLlg8UT8hASUjzldzd7uKmHSyl2wWXfo4/d9eyn
+7DLpncLoEx7z4PHQ3hEPT4tI793IwgSafY7wHvIQrxmzT3kOHXEUCFM3Xnvy8DkewzncFQi+xE8sR1yT
+LxafBc6xDyf6+iXW5XocQxoK9IGoj9fsCyR6XNosKMcfcUby48i6eAk+Ycn6y92yQ9YvVGi+V5To5X2I
+569JQmKn6zyFNPgF00ekuCj+7btML7R+iuMY3ylaF6c+UKL0J2N0aneM//oly+26U8yhu9W9HODy66r3
+URrcOOLo74X5HmGC+1+cmeRTdlMObsQlzove7zGfGbOVQKvXds+NgGyxNfqHLEWJB95Ctg8F9tJWemex
+58ZwZQ/Qa3B1wKtUZQHx19aItoU2TDbbWoqygFSreldKtcHLzkJpi1o20ooSVoME71RStETWCLOquLL8
+RdbSHgq2llYR51obcGy5sXK1q7nBdme2uhXgqoTSSqq1kWojGqHsM6SC0hA/hLJoK17XJMX4zlbakD+s
+9PZg5KayqHRdCtPiRaCW/KUWNyl1wKrmsilQ8oZvxILSthKG0drNHfaVoCfS4wp8ZaVWFGOllTV8ZQtY
+bexP6F62ogA3sqVC1kY3BaM69ZpWpCKcEjcWqhpfLqLN8r9rxU9ClILXUm1aAlPEz+Vn9l8AAAD//7MD
+VDw4BAAA`,
+		},
 		"github.com/kopoli/go-terminal-size": EncodedLicense{
 			Name: "MIT",
 			Text: `
@@ -129,22 +145,6 @@ xZ4bw5U9QK/B1QGvUpUFxF9bI9oW2jDZbGspygJSrepdKdUGLzsLpS1q2UgrSlgNErxTSdESWSPMquLK
 sNLbg5GbyqLSdSlMixeBWvKXWtyk1AGrmsumQMkbvhELSttKGEZrN3fYV4KeSI8r8JWVWlGMlVbW8JUt
 YLWx36F72YoC3MiWClkb3RSM6tRrWpGKcErcWKhqfLmINsv/rhXfCVEKXku1aQlMET+Xn/8LAAD//6Ye
 ih03BAAA`,
-		},
-		"github.com/kopoli/go-util": EncodedLicense{
-			Name: "MIT",
-			Text: `
-H4sIAAAAAAAC/1xRzW7jNhC+8yk+5JQAQvpz6KE3xqItIhJpUPS6PtISHbGVRUOkG+Tti5Gd3WZPgjjz
-/Y4dPBppUYfOT8njsZH2ibFVvHzM4W3IeOye8Puvv/2BVzeOHq9u+sfNnrGtn88hpRAnhITBz/74gbfZ
-Tdn3BU6z94gndIOb33yBHOGmD1z8nOKEeMwuTGF6g0MXLx8snpCHkJDiKb+72cNNPVxKsQsu+x597K5n
-P2WXSe8URp/wmAePh/aOeHhaRHrvRhYm0OxzhPeQh3jNmH3Kc+iIo0CYuvHak4fP8RjO4a5A8CV+Yjni
-mnyx+Cxwjn040dcvsS7X4xjSUKAPRH28Zl8g0ePSZkE5fokzkh9H1sVL8AlL1h/ulh2yfqFC872iRC/v
-Qzx/TRISO13nKaTBL5g+IsVF8W/fZXqh9VMcx/hO0bo49YESpT8Zo1O7Y/zXL1lu151iDt2t7uUAlx9X
-vY/S4MYRR38vzPcIE9z/4swkn7KbcnAjLnFe9H6O+cyYrQRavbZ7bgRki63R32QpSjzwFrJ9KLCXttI7
-iz03hit7gF6DqwNepSoLiL+2RrQttGGy2dZSlAWkWtW7UqoNXnYWSlvUspFWlLAaJHinkqIlskaYVcWV
-5S+ylvZQsLW0ijjX2oBjy42Vq13NDbY7s9WtAFcllFZSrY1UG9EIZZ8hFZSG+CaURVvxuiYpxne20ob8
-YaW3ByM3lUWl61KYFi8CteQvtbhJqQNWNZdNgZI3fCMWlLaVMIzWbu6wrwQ9kR5X4CsrtaIYK62s4Stb
-wGpjv0P3shUFuJEtFbI2uikY1anXtCIV4ZS4sVDV+HIRbZb/XSu+E6IUvJZq0xKYIn4uP/8XAAD//6vn
-VXQ3BAAA`,
 		},
 		"github.com/kopoli/pawnd": EncodedLicense{
 			Name: "MIT",
@@ -241,23 +241,6 @@ ltgwxRPnRkgQ7IhUrNq3RGK3lzvRUxBegwvO+EYyvqUd5eoVjIML0G+UK/QNadssRfaqETL7q8TuKNm2
 UWhEW1PZ442iZeStpXcpfkTVEtaVqElHtjSjhGqozGsPd4eG5ifGQThIpZjgKUYluJKkUiWUkOo/6IH1
 tASRrE+FbKToSqQ6xSZ3xhOO0ztLqhpfLiJk/t/39NNLTUnL+LZP4B+XX4vi3wAAAP//SKx5nT0EAAA=
 `,
-		},
-		"github.com/pkg/errors": EncodedLicense{
-			Name: "FreeBSD",
-			Text: `
-H4sIAAAAAAAC/5SSQY/bNhOG7/wVL3LKfhD8tQV6aYqitDS2BpBJlaTW8VFrcWMCtrSQ6A323xdkdhGn
-DVr05LHEmXnehyqnp5c5fDpFvD/e4acffvy5QNU/e5QnP/oX/Dr0z/73Y/6zGn38TcjzGbljwewXPz/7
-YSWE8UNY4hwerjFMI/pxwHXxCCOW6ToffX7yEMZ+fsHjNF+WAp9DPGGa8+90jeIyDeExHPs0oEA/ezz5
-+RJi9AOe5uk5DH5APPUR8eTxOJ3P0+cwfsJxGoeQmpbcdPHxFyH+h2+JFkyPbyjHafC4XJeI2cc+jHle
-/zA9p1dvOsYphqMvEE9hEcA5LDGNuF02Dn8hGcJyPPfh4ufV9wjCeGvgjeBpnobr0f8ThEDG+K8QeI02
-TMfrxY8xmxVIPf+fZkzx5Gdc+ujn0J+Xr47zxeTGG/yVEK5mC6s3bi8NgS1ao++5ogrrA1xNKHV7MLyt
-HWrdVGQspKpQauUMrzunjcU7acH2nUgvpDqAPraGrIU24F3bMFXYS2Okcky2AKuy6SpW2wLrzkFph4Z3
-7KiC00VaKv7eBr3BjkxZS+Xkmht2hwyyYafSro02kGilcVx2jTRoO9NqS5CGRMW2bCTvqFqBFZQG3ZNy
-sLVsmu+mTOzfZFwTGpbrhkTepA6o2FDpUpyvVckVKSebAralklNBH2nXNtIciteZlv7oSDmWjajkTm7J
-4v2/KGmNLjtDu8SsN7Dd2jp2nSNsta6SaGHJ3HNJ9gMabbOtzlKBSjqZF7dGb9jZD6led5azNFaOjOla
-x1rdodZ7uicjStlZqrJdrXJUV5M2hzQ0OcjyC+xrcjWZJDSbkkmBdYZLd3NMaAOnjbvJCEXbhrekSko0
-Ok3Zs6U7SMM2HeAva/fyAN3lyOmOOksilzdfbJFvEryBrO45Yb8ebrW1/PqdZGVljS+6V+LPAAAA//+5
-j2aZIAUAAA==`,
 		},
 		"github.com/robfig/cron": EncodedLicense{
 			Name: "MIT",

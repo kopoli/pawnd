@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	util "github.com/kopoli/go-util"
+	"github.com/kopoli/appkit"
 )
 
 func Templates() map[string]string {
@@ -26,7 +26,7 @@ exec=go test
 	}
 }
 
-func GenerateTemplates(opts util.Options) error {
+func GenerateTemplates(opts appkit.Options) error {
 	templates := strings.Split(opts.Get("generate-templates", ""), " ")
 
 	var out io.Writer
@@ -41,7 +41,7 @@ func GenerateTemplates(opts util.Options) error {
 
 		fp, err := os.Create(filename)
 		if err != nil {
-			return util.E.Annotate(err, "Could not create file", filename)
+			return ErrAnnotate(err, "Could not create file", filename)
 		}
 		defer fp.Close()
 		out = fp
@@ -60,7 +60,7 @@ func GenerateTemplates(opts util.Options) error {
 			_, err = out.Write([]byte{'\n'})
 		}
 		if err != nil {
-			return util.E.Annotate(err, "Could not write template")
+			return ErrAnnotate(err, "Could not write template")
 		}
 	}
 

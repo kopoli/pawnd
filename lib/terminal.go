@@ -9,8 +9,8 @@ import (
 	"time"
 
 	cursor "github.com/ahmetalpbalkan/go-cursor"
+	"github.com/kopoli/appkit"
 	tsize "github.com/kopoli/go-terminal-size"
-	util "github.com/kopoli/go-util"
 	"github.com/mgutz/ansi"
 )
 
@@ -18,9 +18,9 @@ var (
 	spinner = `-/|\`
 
 	//
-	statusRun  = "run"
-	statusOk   = "ok"
-	statusFail = "fail"
+	statusRun    = "run"
+	statusOk     = "ok"
+	statusFail   = "fail"
 	statusDaemon = "daemon"
 
 	//
@@ -75,7 +75,7 @@ type TerminalOutput struct {
 	initialized bool
 }
 
-func NewTerminalOutput(opts util.Options) *TerminalOutput {
+func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 	readychan := make(chan bool, 1)
 
 	var ret = &TerminalOutput{
