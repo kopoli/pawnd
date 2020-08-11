@@ -347,7 +347,7 @@ script=:
 			[]opfunc{
 				opExpectOutput("changedtask"),
 				opFile("something.tmp", "changed contents"),
-				opExpectOutput("Triggering changedtask"),
+				opExpectOutput("Sending trigger to changedtask"),
 				opPrintOutput(),
 			}),
 	}

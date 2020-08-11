@@ -25,6 +25,7 @@ var (
 	MsgTerm = "terminate" // Stop all processing
 	MsgRest = "restart"   // Restart
 	MsgTrig = "trigger"   // Make action happen
+	MsgWait = "wait"      // Reset status to wait
 
 	ToAll            = "*"
 	ErrMainRestarted = fmt.Errorf("Main restarted")

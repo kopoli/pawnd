@@ -46,11 +46,16 @@ func (a *BaseAction) Terminal() Terminal {
 	return a.term
 }
 
-func (a *BaseAction) trigger(ids []string) {
+
+func (a *BaseAction) sendAll(ids []string, message string) {
 	for i := range ids {
-		fmt.Fprintln(a.Terminal().Verbose(), "Triggering", ids[i])
-		a.Send(ActionName(ids[i]), MsgTrig)
+		fmt.Fprintln(a.Terminal().Verbose(), "Sending", message, "to", ids[i])
+		a.Send(ActionName(ids[i]), message)
 	}
+}
+
+func (a *BaseAction) trigger(ids []string) {
+	a.sendAll(ids, MsgTrig)
 }
 
 ///
@@ -368,6 +373,10 @@ func (a *ShAction) RunCommand() error {
 	}
 	term.SetStatus(status, info)
 
+	// Send waiting signal to all dependencies
+	a.sendAll(a.Succeeded, MsgWait)
+	a.sendAll(a.Failed, MsgWait)
+
 	err = i.Run(ctx, a.script)
 	if err == nil {
 		a.trigger(a.Succeeded)
@@ -408,6 +417,10 @@ func (a *ShAction) Cancel() {
 
 func (a *ShAction) Receive(from, message string) {
 	switch message {
+	case MsgWait:
+		a.Terminal().SetStatus(statusWait, "")
+		a.sendAll(a.Succeeded, MsgWait)
+		a.sendAll(a.Failed, MsgWait)
 	case MsgTrig:
 		if a.Daemon {
 			a.Cancel()

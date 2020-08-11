@@ -22,6 +22,7 @@ var (
 	statusOk     = "ok"
 	statusFail   = "fail"
 	statusDaemon = "daemon"
+	statusWait   = "wait"
 
 	//
 	infoDaemon = "daemon"
@@ -180,6 +181,8 @@ func formatStatus(status, name string) string {
 	case statusDaemon:
 		status = ansi.ColorCode("blue+h") + "DAEM" + ansi.Reset
 	case "":
+		fallthrough
+	case statusWait:
 		status = ansi.ColorCode("grey+h") + "WAIT" + ansi.Reset
 	}
 	return fmt.Sprintf("[%s][%s] ", status, name)
@@ -390,6 +393,8 @@ func (t *terminal) SetStatus(status string, info string) {
 	}
 
 	switch status {
+	case statusWait:
+		progress = 0
 	case statusDaemon:
 		fallthrough
 	case statusRun:
