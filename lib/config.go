@@ -149,6 +149,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a.Cooldown = sect.Key("cooldown").MustDuration(a.Cooldown)
 			a.Timeout = sect.Key("timeout").MustDuration(a.Timeout)
 			a.Daemon = daemon
+			a.OnChange = sect.Key("onchange").MustBool(false)
 			a.Succeeded = splitWsQuote(sect.Key("succeeded").Value())
 			a.Failed = splitWsQuote(sect.Key("failed").Value())
 			a.Visible = sect.Key("visible").MustBool(true)

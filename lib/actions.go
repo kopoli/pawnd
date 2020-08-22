@@ -46,7 +46,6 @@ func (a *BaseAction) Terminal() Terminal {
 	return a.term
 }
 
-
 func (a *BaseAction) sendAll(ids []string, message string) {
 	for i := range ids {
 		fmt.Fprintln(a.Terminal().Verbose(), "Sending", message, "to", ids[i])
@@ -300,12 +299,14 @@ type ShAction struct {
 	Cooldown  time.Duration
 	Timeout   time.Duration
 	Daemon    bool
+	OnChange  bool
 	Succeeded []string
 	Failed    []string
 
-	script    *syntax.File
-	startchan chan bool
-	termchan  chan bool
+	script     *syntax.File
+	startchan  chan bool
+	termchan   chan bool
+	prevStatus string
 
 	cancelMutex sync.RWMutex
 	cancel      context.CancelFunc
@@ -374,21 +375,30 @@ func (a *ShAction) RunCommand() error {
 	term.SetStatus(status, info)
 
 	// Send waiting signal to all dependencies
-	a.sendAll(a.Succeeded, MsgWait)
-	a.sendAll(a.Failed, MsgWait)
+	if !a.OnChange {
+		a.sendAll(a.Succeeded, MsgWait)
+		a.sendAll(a.Failed, MsgWait)
+	}
+
+	status = statusOk
+	triggered := &a.Succeeded
+	info = ""
 
 	err = i.Run(ctx, a.script)
-	if err == nil {
-		a.trigger(a.Succeeded)
-		term.SetStatus(statusOk, "")
-	} else {
+	if err != nil {
 		if exitStat, ok := err.(*interp.ShellExitStatus); ok {
 			info = fmt.Sprintf("Failed with code: %d", exitStat)
 		} else {
 			info = err.Error()
 		}
-		a.trigger(a.Failed)
-		term.SetStatus(statusFail, info)
+		triggered = &a.Failed
+		status = statusFail
+	}
+
+	if !a.OnChange || (a.OnChange && (status != a.prevStatus)) {
+		a.trigger(*triggered)
+		term.SetStatus(status, info)
+		a.prevStatus = status
 	}
 
 	cooldown := a.Cooldown - time.Since(starttime)
