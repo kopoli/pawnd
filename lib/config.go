@@ -57,7 +57,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 	}
 
 	for _, sect := range fp.Sections() {
-		if sect.Name() == ini.DEFAULT_SECTION {
+		if sect.Name() == ini.DefaultSection {
 			continue
 		}
 
