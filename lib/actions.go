@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -88,44 +89,64 @@ type FileAction struct {
 	Changed []string
 
 	termchan chan bool
+
+	files    []string
+	dirs     []string
 	watch    *fsnotify.Watcher
+	dirWatch *fsnotify.Watcher
 
 	BaseAction
 }
 
-// Remove duplicate strings from the list
-func uniqStr(in []string) (out []string) {
-	set := make(map[string]bool, len(in))
-
-	for _, item := range in {
-		set[item] = true
-	}
-	out = make([]string, len(set))
-	for item := range set {
-		out = append(out, item)
-	}
-	return
-}
-
 // Get the list of files represented by the given list of glob patterns
-func getFileList(patterns []string) (ret []string) {
+func getFileList(patterns []string) []string {
+	d := map[string]struct{}{}
 	for _, pattern := range patterns {
-		// Recursive globbing support
 		m, err := zglob.Glob(pattern)
 		if err != nil {
 			continue
 		}
 
-		ret = append(ret, m...)
+		for _, f := range m {
+			d[f] = struct{}{}
+		}
 	}
 
-	for _, path := range ret {
-		ret = append(ret, filepath.Dir(path))
+	ret := make([]string, 0, len(d))
+	for k := range d {
+		ret = append(ret, k)
+	}
+	sort.Strings(ret)
+
+	return ret
+}
+
+func pathExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func getDirList(patterns, files []string) []string {
+	d := map[string]struct{}{}
+	for i := range patterns {
+		patternDir := filepath.Dir(patterns[i])
+		if pathExists(patternDir) {
+			d[patternDir] = struct{}{}
+		}
+	}
+	for i := range files {
+		d[filepath.Dir(files[i])] = struct{}{}
 	}
 
-	ret = uniqStr(ret)
+	ret := make([]string, 0, len(d))
+	for k := range d {
+		ret = append(ret, k)
+	}
+	sort.Strings(ret)
 
-	return
+	return ret
 }
 
 // stopTimer stops time.Timer correctly
@@ -139,33 +160,63 @@ func stopTimer(t *time.Timer) {
 }
 
 func NewFileAction(patterns ...string) (*FileAction, error) {
-
-	var ret = FileAction{
+	var ret = &FileAction{
 		Patterns:   patterns,
 		Hysteresis: 1000 * time.Millisecond,
 		termchan:   make(chan bool, 1),
 	}
 
-	var err error
-	ret.watch, err = fsnotify.NewWatcher()
+	err := ret.updateFiles()
 	if err != nil {
-		err = ErrAnnotate(err, "Could not create a new watcher")
 		return nil, err
 	}
 
-	files := getFileList(ret.Patterns)
-	if len(files) == 0 {
-		return nil, fmt.Errorf("No watched files")
+	return ret, nil
+}
+
+func (a *FileAction) updateFiles() error {
+	a.files = getFileList(a.Patterns)
+	a.dirs = getDirList(a.Patterns, a.files)
+
+	if len(a.files)+len(a.dirs) == 0 {
+		return fmt.Errorf("no watched files or directories")
 	}
 
-	for i := range files {
-		err := ret.watch.Add(files[i])
+	var err error
+
+	if a.watch != nil {
+		a.watch.Close()
+	}
+
+	a.watch, err = fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("could not create a new watcher: %v", err)
+	}
+
+	for i := range a.files {
+		err := a.watch.Add(a.files[i])
 		if err != nil {
-			return nil, fmt.Errorf("Could not watch file %s", files[i])
+			return fmt.Errorf("could not watch file %s", a.files[i])
 		}
 	}
 
-	return &ret, err
+	if a.dirWatch != nil {
+		a.dirWatch.Close()
+	}
+
+	a.dirWatch, err = fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("could not create a new watcher: %v", err)
+	}
+
+	for i := range a.dirs {
+		err := a.dirWatch.Add(a.dirs[i])
+		if err != nil {
+			return fmt.Errorf("could not watch directory %s", a.dirs[i])
+		}
+	}
+
+	return nil
 }
 
 func (a *FileAction) Receive(from, message string) {
@@ -177,12 +228,6 @@ func (a *FileAction) Receive(from, message string) {
 
 func (a *FileAction) Run() {
 	matchPattern := func(file string) bool {
-
-		// check if a dangling symlink
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			return false
-		}
-
 		file = filepath.Base(file)
 		for _, p := range a.Patterns {
 			m, er := path.Match(filepath.Base(p), file)
@@ -195,10 +240,15 @@ func (a *FileAction) Run() {
 	}
 
 	go func() {
-		defer a.watch.Close()
-
 		threshold := time.NewTimer(0)
 		stopTimer(threshold)
+
+		refreshTimer := func(filename string) {
+			if matchPattern(filename) {
+				stopTimer(threshold)
+				threshold.Reset(a.Hysteresis)
+			}
+		}
 
 	loop:
 		for {
@@ -206,16 +256,24 @@ func (a *FileAction) Run() {
 			case <-threshold.C:
 				a.trigger(a.Changed)
 			case event := <-a.watch.Events:
-				if matchPattern(event.Name) {
-					stopTimer(threshold)
-					threshold.Reset(a.Hysteresis)
+				refreshTimer(event.Name)
+			case event := <-a.dirWatch.Events:
+				err := a.updateFiles()
+				if err != nil {
+					fmt.Fprintln(a.Terminal().Stderr(), "Error updating watched files:", err)
 				}
+
+				refreshTimer(event.Name)
 			case err := <-a.watch.Errors:
+				fmt.Fprintln(a.Terminal().Stderr(), "Error Received:", err)
+			case err := <-a.dirWatch.Errors:
 				fmt.Fprintln(a.Terminal().Stderr(), "Error Received:", err)
 			case <-a.termchan:
 				break loop
 			}
 		}
+		a.watch.Close()
+		a.dirWatch.Close()
 		a.bus.LinkStopped(a.name)
 	}()
 }
