@@ -71,8 +71,7 @@ func NewInitAction(triggerName string) *InitAction {
 }
 
 func (a *InitAction) Receive(from, message string) {
-	switch message {
-	case MsgInit:
+	if message == MsgInit {
 		a.Send(a.triggerName, MsgTrig)
 	}
 }
@@ -220,8 +219,7 @@ func (a *FileAction) updateFiles() error {
 }
 
 func (a *FileAction) Receive(from, message string) {
-	switch message {
-	case MsgTerm:
+	if message == MsgTerm {
 		a.termchan <- true
 	}
 }
@@ -376,7 +374,7 @@ func CheckShScript(script string, section string) error {
 	r := strings.NewReader(script)
 	_, err := syntax.NewParser(syntax.Variant(syntax.LangPOSIX)).Parse(r, section)
 	if err != nil {
-		err = fmt.Errorf("Script parse error: %v", err)
+		err = fmt.Errorf("script parse error: %v", err)
 	}
 	return err
 }
@@ -467,7 +465,7 @@ func (a *ShAction) RunCommand() error {
 	select {
 	case <-a.termchan:
 		a.Cancel()
-		return fmt.Errorf("Terminated by user")
+		return fmt.Errorf("terminated by user")
 
 	case <-time.After(cooldown):
 	}
@@ -605,8 +603,7 @@ func NewCronAction(spec string) (*CronAction, error) {
 }
 
 func (a *CronAction) Receive(from, message string) {
-	switch message {
-	case MsgTerm:
+	if message == MsgTerm {
 		a.termchan <- true
 	}
 }

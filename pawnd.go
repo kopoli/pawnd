@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/kopoli/appkit"
 	pawnd "github.com/kopoli/pawnd/lib"
@@ -18,9 +17,9 @@ var (
 	progVersion = "" + version
 )
 
-func fault(err error, message string, arg ...string) {
+func fault(err error, message string) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s%s: %s\n", message, strings.Join(arg, " "), err)
+		fmt.Fprintf(os.Stderr, "Error: %s: %s\n", message, err)
 		os.Exit(1)
 	}
 }
@@ -71,11 +70,9 @@ func main() {
 
 	for {
 		err = pawnd.Main(opts)
-		if err == pawnd.ErrMainRestarted {
-			err = nil
-			continue
+		if err != pawnd.ErrMainRestarted {
+			break
 		}
-		break
 	}
 
 	fault(err, "Running pawnd failed")

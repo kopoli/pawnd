@@ -12,7 +12,6 @@ import (
 // splitWsQuote splits a string by whitespace, but takes doublequotes into
 // account
 func splitWsQuote(s string) []string {
-
 	quote := rune(0)
 
 	return strings.FieldsFunc(s, func(r rune) bool {
@@ -47,8 +46,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 			var zero time.Duration
 			d, err = sect.Key(key).Duration()
 			if err != nil || d < zero {
-
-				err = fmt.Errorf("Section \"%s\": Given %s should be a non-negative Duration",
+				err = fmt.Errorf("section \"%s\": Given %s should be a non-negative Duration",
 					sect.Name(), key)
 				return err
 			}
@@ -62,7 +60,7 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if len(sect.ChildSections()) != 0 {
-			err = fmt.Errorf("Section \"%s\": No child sections supported",
+			err = fmt.Errorf("section \"%s\": No child sections supported",
 				sect.Name())
 			goto fail
 		}
@@ -76,19 +74,19 @@ func ValidateConfig(filename string) (*ini.File, error) {
 		}
 
 		if count != 1 {
-			err = fmt.Errorf("Section \"%s\": A section should have exactly one of: %s",
+			err = fmt.Errorf("section \"%s\": A section should have exactly one of: %s",
 				sect.Name(),
 				strings.Join(types, ", "))
 			goto fail
 		}
 
-		if sect.HasKey("file") {
+		switch {
+		case sect.HasKey("file"):
 			err = hasProperDuration(sect, "hysteresis")
 			if err != nil {
 				goto fail
 			}
-		} else if sect.HasKey("exec") || sect.HasKey("daemon") ||
-			sect.HasKey("script") {
+		case sect.HasKey("exec") || sect.HasKey("daemon") || sect.HasKey("script"):
 			err = hasProperDuration(sect, "cooldown")
 			if err != nil {
 				goto fail
@@ -103,12 +101,12 @@ func ValidateConfig(filename string) (*ini.File, error) {
 					goto fail
 				}
 			}
-		} else if sect.HasKey("cron") {
+		case sect.HasKey("cron"):
 			err = CheckCronSpec(sect.Key("cron").String())
 			if err != nil {
 				goto fail
 			}
-		} else if sect.HasKey("signal") {
+		case sect.HasKey("signal"):
 			err = CheckSignal(sect.Key("signal").String())
 			if err != nil {
 				goto fail
@@ -133,7 +131,8 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 		return err != nil
 	}
 	for _, sect := range file.Sections() {
-		if sect.HasKey("script") || sect.HasKey("exec") || sect.HasKey("daemon") {
+		switch {
+		case sect.HasKey("script") || sect.HasKey("exec") || sect.HasKey("daemon"):
 			keyname := "script"
 			daemon := false
 			if sect.HasKey("daemon") {
@@ -162,7 +161,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 				bus.Register(name, a)
 				bus.LinkStopped(name)
 			}
-		} else if sect.HasKey("file") {
+		case sect.HasKey("file"):
 			key := sect.Key("file")
 			a, err := NewFileAction(splitWsQuote(key.String())...)
 			if errhandle("file watcher", sect.Name(), err) {
@@ -171,14 +170,14 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 			a.Changed = splitWsQuote(sect.Key("changed").Value())
 			a.Hysteresis = sect.Key("hysteresis").MustDuration(a.Hysteresis)
 			bus.Register(ActionName(sect.Name()), a)
-		} else if sect.HasKey("cron") {
+		case sect.HasKey("cron"):
 			a, err := NewCronAction(sect.Key("cron").String())
 			if errhandle("cron action", sect.Name(), err) {
 				continue
 			}
 			a.Triggered = splitWsQuote(sect.Key("triggered").Value())
 			bus.Register(ActionName(sect.Name()), a)
-		} else if sect.HasKey("signal") {
+		case sect.HasKey("signal"):
 			a, err := NewSignalAction(sect.Key("signal").String())
 			if errhandle("signal action", sect.Name(), err) {
 				continue

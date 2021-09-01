@@ -9,7 +9,7 @@ import (
 	"github.com/kopoli/appkit"
 )
 
-func Cli(opts appkit.Options, argsin []string) (args []string, err error) {
+func Cli(opts appkit.Options, argsin []string) ([]string, error) {
 	progName := opts.Get("program-name", "pawnd")
 
 	app := cli.App(progName, "For running errands and general minioning")
@@ -71,6 +71,6 @@ func Cli(opts appkit.Options, argsin []string) (args []string, err error) {
 			}
 		})
 
-	err = app.Run(argsin)
-	return
+	err := app.Run(argsin)
+	return nil, err
 }

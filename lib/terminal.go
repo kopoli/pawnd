@@ -245,9 +245,7 @@ func drawStatus(t *terminal, maxwidth int, out *bytes.Buffer) string {
 }
 
 func determineTitleStatus(wholeStatus, singleStatus string) string {
-
 	switch wholeStatus {
-
 	case statusRun:
 		fallthrough
 	case statusFail:

@@ -36,12 +36,12 @@ func GenerateTemplates(opts appkit.Options) error {
 		filename := opts.Get("generate-configuration-file", "Pawnfile")
 		overwrite := opts.IsSet("generate-overwrite")
 		if _, err := os.Stat(filename); err == nil && !overwrite {
-			return fmt.Errorf("File %s already exists", filename)
+			return fmt.Errorf("file %s already exists", filename)
 		}
 
 		fp, err := os.Create(filename)
 		if err != nil {
-			return ErrAnnotate(err, "Could not create file", filename)
+			return ErrAnnotate(err, "could not create file", filename)
 		}
 		defer fp.Close()
 		out = fp
@@ -50,7 +50,7 @@ func GenerateTemplates(opts appkit.Options) error {
 
 	for i := range templates {
 		if _, ok := all[templates[i]]; !ok {
-			return fmt.Errorf("Invalid template %s", templates[i])
+			return fmt.Errorf("invalid template %s", templates[i])
 		}
 	}
 
@@ -60,7 +60,7 @@ func GenerateTemplates(opts appkit.Options) error {
 			_, err = out.Write([]byte{'\n'})
 		}
 		if err != nil {
-			return ErrAnnotate(err, "Could not write template")
+			return ErrAnnotate(err, "could not write template")
 		}
 	}
 

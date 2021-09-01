@@ -74,7 +74,7 @@ func Test_pawndRunning(t *testing.T) {
 	opFile := func(name, contents string) func() error {
 		name = filepath.Join(testdir, name)
 		return func() error {
-			return ioutil.WriteFile(name, []byte(contents), 0666)
+			return ioutil.WriteFile(name, []byte(contents), 0600)
 		}
 	}
 
@@ -114,7 +114,7 @@ func Test_pawndRunning(t *testing.T) {
 				}
 				time.Sleep(time.Millisecond * 2)
 			}
-			return fmt.Errorf("Could not find regexp: %s", expectRe)
+			return fmt.Errorf("could not find regexp: %s", expectRe)
 		}
 	}
 
@@ -211,7 +211,7 @@ cooldown=2h30m10s
 `),
 		PawnfileError("Parse: Invalid script", `[fp]
 script=if false; do
-`, "Script parse error"),
+`, "script parse error"),
 		PawnfileOk("Parse: Proper exec visible", `[fp]
 exec=false
 visible
@@ -295,8 +295,7 @@ script=go run inttest.go this failed
 				opPrintOutput(),
 				opExpectOutput("inttest.*this failed"),
 			}),
-
-		IntegrationTest{
+		{
 			name: "If Pawnfile is updated, pawnd restarts",
 			preops: []opfunc{
 				opSetVerbose,
@@ -308,9 +307,9 @@ script=go run inttest.go this failed
 				opExpectOutput("File.*Pawnfile.*changed"),
 				opPrintOutput(),
 			},
-			ExpectedErrorRe: "Main restarted",
+			ExpectedErrorRe: "main restarted",
 		},
-		IntegrationTest{
+		{
 			name: "Explicit trigger of `pawnd-restart` restarts pawnd",
 			preops: []opfunc{
 				opSetVerbose,
@@ -319,7 +318,7 @@ script=go run inttest.go this failed
 			ops: []opfunc{
 				opPrintOutput(),
 			},
-			ExpectedErrorRe: "Main restarted",
+			ExpectedErrorRe: "main restarted",
 		},
 
 		PawnfileOps("Files to check for changes not found", `[filechange]
@@ -352,6 +351,8 @@ script=:
 			}),
 	}
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
 
 			err := os.RemoveAll(testdir)
@@ -385,13 +386,13 @@ script=:
 			go func() {
 				err := opSleep(time.Millisecond * 10)()
 				if err != nil {
-					opErr = fmt.Errorf("Internal error, sleep failed: %v\n", err)
+					opErr = fmt.Errorf("internal error, sleep failed: %v", err)
 				}
 				for i := range tt.ops {
 					fmt.Println("Running op", spew.Sdump(tt.ops[i]))
 					err := tt.ops[i]()
 					if err != nil {
-						opErr = fmt.Errorf("Op %d failed: %v\n  op: %v",
+						opErr = fmt.Errorf("op %d failed: %v\n  op: %v",
 							i, err, spew.Sdump(tt.ops[i]))
 						_ = opTerminate()
 						break

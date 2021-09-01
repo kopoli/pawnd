@@ -28,7 +28,7 @@ var (
 	MsgWait = "wait"      // Reset status to wait
 
 	ToAll            = "*"
-	ErrMainRestarted = fmt.Errorf("Main restarted")
+	ErrMainRestarted = fmt.Errorf("main restarted")
 )
 
 // EventBus conveys messages to Listeners

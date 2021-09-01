@@ -34,16 +34,14 @@ var deps = Deps{
 		fmt.Fprintf(os.Stderr, "Error: Failsafe exit triggered\n")
 		os.Exit(2)
 	},
-	NewTerminalStdout: func() io.Writer {
-		return colorable.NewColorableStdout()
-	},
+	NewTerminalStdout: colorable.NewColorableStdout,
 	SignalNotify: func(c chan<- os.Signal, sig ...os.Signal) {
 		signal.Notify(c, sig...)
 	},
 	SignalReset: func(sig ...os.Signal) {
 		signal.Reset(sig...)
 	},
-	SupportedSignal: func(name string) (os.Signal, error)  {
+	SupportedSignal: func(name string) (os.Signal, error) {
 		_, ok := SupportedSignals[name]
 		if !ok {
 			return nil, fmt.Errorf("signal name \"%s\" is not supported", name)
