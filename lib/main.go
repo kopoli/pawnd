@@ -6,7 +6,9 @@ import (
 
 func Main(opts appkit.Options) error {
 	eb := NewEventBus()
+	defer eb.Close()
 	ta := NewTerminalOutput(opts)
+	defer ta.Stop()
 
 	sa, _ := NewSignalAction("interrupt")
 	sa.Terminator = true
@@ -35,6 +37,5 @@ func Main(opts appkit.Options) error {
 
 	ta.Draw()
 	err = eb.Run()
-	ta.Stop()
 	return err
 }

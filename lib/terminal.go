@@ -35,14 +35,14 @@ var (
 type termWriter struct {
 	out   *bytes.Buffer
 	mutex sync.Mutex
-	ready chan<- bool
+	ready chan<- struct{}
 }
 
 func (w *termWriter) Write(buf []byte) (int, error) {
 	w.mutex.Lock()
 	defer func() {
 		w.mutex.Unlock()
-		w.ready <- true
+		w.ready <- struct{}{}
 	}()
 	return w.out.Write(buf)
 }
@@ -70,14 +70,15 @@ type TerminalOutput struct {
 
 	defaultTerm Terminal
 
-	termchan  chan bool
-	readychan chan bool
+	termchan  chan struct{}
+	readychan chan struct{}
+	termWait  sync.WaitGroup
 
 	initialized bool
 }
 
 func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
-	readychan := make(chan bool, 1)
+	readychan := make(chan struct{}, 1)
 
 	var ret = &TerminalOutput{
 		updateInterval: time.Second * 2,
@@ -90,7 +91,7 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 			ready: readychan,
 			out:   &bytes.Buffer{},
 		},
-		termchan: make(chan bool, 1),
+		termchan: make(chan struct{}, 1),
 	}
 
 	sl, slerr := tsize.NewSizeListener()
@@ -101,6 +102,7 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 		ret.Width = s.Width - limit
 	}
 
+	ret.termWait.Add(1)
 	go func() {
 		drawTimer := time.NewTimer(ret.updateInterval)
 	loop:
@@ -109,7 +111,7 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 			case <-drawTimer.C:
 				ret.updateSpinners()
 				ret.draw()
-				stopTimer(drawTimer)
+				drawTimer.Stop()
 				drawTimer.Reset(ret.updateInterval)
 			case <-ret.readychan:
 				ret.draw()
@@ -120,6 +122,7 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 				break loop
 			}
 		}
+		ret.termWait.Done()
 		sl.Close()
 	}()
 
@@ -139,7 +142,8 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 // Stop TerminalOutput. This cannot be stopped with the MsgTerm message as some
 // other actions can print while they are terminating.
 func (a *TerminalOutput) Stop() {
-	a.termchan <- true
+	a.termchan <- struct{}{}
+	a.termWait.Wait()
 }
 
 func GetTerminal(name string) Terminal {
@@ -316,7 +320,7 @@ func (a *TerminalOutput) draw() {
 func (a *TerminalOutput) Draw() {
 	// When Draw is called, it is regarded as initial run
 	a.initialized = false
-	a.readychan <- true
+	a.readychan <- struct{}{}
 }
 
 ///
@@ -361,7 +365,7 @@ func RegisterTerminal(name string, visible bool) Terminal {
 		Visible:          visible,
 		out:              NewPrefixedWriter(prefix, termOutput.buffer),
 		err:              NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer),
-		progressStopChan: make(chan bool),
+		progressStopChan: make(chan bool, 1),
 	}
 	ret.verbose = &VerboseWriter{ret.out, termOutput.Verbose}
 	termOutput.terminals = append(termOutput.terminals, &ret)
@@ -424,7 +428,7 @@ func (t *terminal) SetStatus(status string, info string) {
 						t.Progress = progress
 						t.statusMutex.Unlock()
 
-						termOutput.readychan <- true
+						termOutput.readychan <- struct{}{}
 					case <-t.progressStopChan:
 						stopTimer(runtimer)
 						break loop
@@ -452,7 +456,7 @@ func (t *terminal) SetStatus(status string, info string) {
 	t.Progress = progress
 	t.statusMutex.Unlock()
 
-	termOutput.readychan <- true
+	termOutput.readychan <- struct{}{}
 }
 
 // PrefixedWriter is an io.Writer that prefixes and suffixes all lines given

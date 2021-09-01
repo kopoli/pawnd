@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -16,8 +17,22 @@ import (
 	"github.com/kopoli/appkit"
 )
 
+type lockWriter struct {
+	wr io.Writer
+	sync.Mutex
+}
+
+func (w *lockWriter) Write(p []byte) (n int, err error) {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.wr.Write(p)
+}
+
 func Test_pawndRunning(t *testing.T) {
 	buf := &bytes.Buffer{}
+	wr := &lockWriter{}
+	wr.wr = buf
 
 	deps = defaultDeps
 	deps.FailSafeExit = func() {
@@ -25,25 +40,29 @@ func Test_pawndRunning(t *testing.T) {
 		panic("Failsafe exit!")
 	}
 	deps.NewTerminalStdout = func() io.Writer {
-		return buf
+		return wr
 	}
 
 	// type sigchan chan<-os.Signal
 	sigchans := map[os.Signal]chan<- os.Signal{
 		os.Interrupt: nil,
 	}
+	sigMutex := sync.Mutex{}
 
 	deps.SignalNotify = func(c chan<- os.Signal, sig ...os.Signal) {
+		sigMutex.Lock()
+		defer sigMutex.Unlock()
 		for i := range sig {
 			sigchans[sig[i]] = c
 		}
 	}
 
 	deps.SignalReset = func(sig ...os.Signal) {
+		sigMutex.Lock()
+		defer sigMutex.Unlock()
 		for i := range sig {
 			sigchans[sig[i]] = nil
 		}
-
 	}
 
 	testdir := "integration-test"
@@ -67,6 +86,8 @@ func Test_pawndRunning(t *testing.T) {
 	_ = opPanic
 
 	opTerminate := func() error {
+		sigMutex.Lock()
+		defer sigMutex.Unlock()
 		sigchans[os.Interrupt] <- os.Interrupt
 		return nil
 	}
@@ -89,7 +110,9 @@ func Test_pawndRunning(t *testing.T) {
 
 	opPrintOutput := func() func() error {
 		return func() error {
+			wr.Lock()
 			fmt.Println(buf.String())
+			wr.Unlock()
 			return nil
 		}
 	}
@@ -109,7 +132,10 @@ func Test_pawndRunning(t *testing.T) {
 		return func() error {
 			// Poll quickly if given string is in the output
 			for i := 0; i < 1000; i++ {
-				if re.MatchString(buf.String()) {
+				wr.Lock()
+				s := buf.String()
+				wr.Unlock()
+				if re.MatchString(s) {
 					return nil
 				}
 				time.Sleep(time.Millisecond * 2)
@@ -321,17 +347,6 @@ script=go run inttest.go this failed
 			ExpectedErrorRe: "main restarted",
 		},
 
-		PawnfileOps("Files to check for changes not found", `[filechange]
-file=*.notfound
-changed=changedtask
-`,
-			[]opfunc{
-				opSetVerbose,
-			},
-			[]opfunc{
-				opExpectOutput("Creating file watcher.*filechange.*failed"),
-			}),
-
 		PawnfileOps("Triggering with a file change", fmt.Sprintf(`[filechange]
 file=%s/*.tmp
 changed=changedtask
@@ -354,7 +369,6 @@ script=:
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-
 			err := os.RemoveAll(testdir)
 			if err != nil {
 				t.Error("Could not remove test directory:", err)
@@ -368,7 +382,9 @@ script=:
 			opts = appkit.NewOptions()
 			opts.Set("configuration-file", pawnfile)
 
+			wr.Lock()
 			buf.Reset()
+			wr.Unlock()
 
 			for i := range tt.preops {
 				err = tt.preops[i]()
@@ -414,8 +430,10 @@ script=:
 			}
 
 			wg.Wait()
+
+			runtime.Gosched()
 			if opErr != nil {
-				t.Fatalf("%v", opErr)
+				t.Fatalf("Fatal opError: %v", opErr)
 			}
 		})
 	}

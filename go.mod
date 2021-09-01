@@ -14,7 +14,6 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/robfig/cron v1.2.0
-	github.com/ryanuber/go-glob v1.0.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 // indirect
 	golang.org/x/sync v0.0.0-20201008141435-b3e1573b7520 // indirect

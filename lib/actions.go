@@ -151,10 +151,7 @@ func getDirList(patterns, files []string) []string {
 // stopTimer stops time.Timer correctly
 func stopTimer(t *time.Timer) {
 	if !t.Stop() {
-		select {
-		case <-t.C:
-		default:
-		}
+		<-t.C
 	}
 }
 
@@ -243,7 +240,7 @@ func (a *FileAction) Run() {
 
 		refreshTimer := func(filename string) {
 			if matchPattern(filename) {
-				stopTimer(threshold)
+				threshold.Stop()
 				threshold.Reset(a.Hysteresis)
 			}
 		}
@@ -285,7 +282,7 @@ func CheckSignal(name string) error {
 
 type SignalAction struct {
 	sigchan  chan os.Signal
-	termchan chan bool
+	termchan chan struct{}
 	sig      os.Signal
 
 	Triggered []string
@@ -310,16 +307,15 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 
 	var ret = SignalAction{
 		sigchan:  make(chan os.Signal, 1),
-		termchan: make(chan bool, 1),
+		termchan: make(chan struct{}, 1),
 		sig:      sig,
 	}
 	return &ret, nil
 }
 
 func (a *SignalAction) Receive(from, message string) {
-	switch message {
-	case MsgTerm:
-		a.termchan <- true
+	if message == MsgTerm {
+		a.termchan <- struct{}{}
 	}
 }
 
@@ -613,7 +609,7 @@ func (a *CronAction) Run() {
 		next := a.sched.Next(time.Now())
 		fmt.Fprintln(a.Terminal().Verbose(), "Next:", next.String())
 		dur := time.Until(next)
-		stopTimer(tmr)
+		tmr.Stop()
 		tmr.Reset(dur)
 	}
 

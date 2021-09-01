@@ -2,22 +2,10 @@ package pawnd
 
 import (
 	"fmt"
+	"path"
 	"sync"
 	"time"
-
-	glob "github.com/ryanuber/go-glob"
 )
-
-/*
-Use-cases:
-
-- file update triggers registered action
-- everything is terminated
-- action is triggered during startup
-- action triggers a second action
-- the display is updated when program starts, stops.
-
-*/
 
 // Common messages
 var (
@@ -87,6 +75,16 @@ func (eb *EventBus) Send(from, to, message string) {
 
 // Run until terminated
 func (eb *EventBus) Run() error {
+	go func() {
+		select {
+		case <-eb.failsafeTimer.C:
+			deps.FailSafeExit()
+			return
+		case <-eb.done:
+		}
+		stopTimer(eb.failsafeTimer)
+	}()
+
 	for k := range eb.links {
 		eb.links[k].Run()
 	}
@@ -94,9 +92,16 @@ func (eb *EventBus) Run() error {
 	eb.Send("", ToAll, MsgInit)
 	eb.wg.Wait()
 
+	eb.done <- struct{}{}
+
 	if eb.restarting {
 		return ErrMainRestarted
 	}
+	return nil
+}
+
+func (eb *EventBus) Close() error {
+	eb.Send("", ToAll, MsgTerm)
 	return nil
 }
 
@@ -109,22 +114,12 @@ func (eb *EventBus) LinkStopped(name string) {
 func NewEventBus() *EventBus {
 	var ret = EventBus{
 		links:   make(map[string]BusLink),
-		msgchan: make(chan Message),
-		done:    make(chan struct{}),
+		msgchan: make(chan Message, 5),
+		done:    make(chan struct{}, 1),
 	}
 
 	ret.failsafeTimer = time.NewTimer(0)
 	stopTimer(ret.failsafeTimer)
-
-	go func() {
-		select {
-		case <-ret.failsafeTimer.C:
-			deps.FailSafeExit()
-			return
-		case <-ret.done:
-		}
-		stopTimer(ret.failsafeTimer)
-	}()
 
 	ret.wg.Add(1)
 	go func() {
@@ -133,14 +128,15 @@ func NewEventBus() *EventBus {
 			ret.mutex.Lock()
 			isterm := msg.Contents == MsgTerm
 			for k := range ret.links {
-				if !glob.Glob(msg.To, k) {
+				matched, err := path.Match(msg.To, k)
+				if err != nil {
+					msg := fmt.Sprintf("internal error, bad pattern: %v", err)
+					panic(msg)
+				}
+				if !matched {
 					continue
 				}
-				if !isterm {
-					go ret.links[k].Receive(msg.From, msg.Contents)
-				} else {
-					ret.links[k].Receive(msg.From, msg.Contents)
-				}
+				ret.links[k].Receive(msg.From, msg.Contents)
 			}
 			ret.mutex.Unlock()
 			if isterm {
@@ -149,8 +145,6 @@ func NewEventBus() *EventBus {
 		}
 		ret.wg.Done()
 	}()
-
-	close(ret.done)
 
 	return &ret
 }
