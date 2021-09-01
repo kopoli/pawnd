@@ -360,8 +360,8 @@ type ShAction struct {
 	Failed    []string
 
 	script     *syntax.File
-	startchan  chan bool
-	termchan   chan bool
+	startchan  chan struct{}
+	termchan   chan struct{}
 	prevStatus string
 
 	cancelMutex sync.RWMutex
@@ -389,8 +389,8 @@ func NewShAction(script string) (*ShAction, error) {
 	ret := &ShAction{
 		Cooldown:  3000 * time.Millisecond,
 		script:    scr,
-		startchan: make(chan bool, 1),
-		termchan:  make(chan bool, 1),
+		startchan: make(chan struct{}, 1),
+		termchan:  make(chan struct{}, 1),
 	}
 
 	ret.Visible = true
@@ -491,9 +491,10 @@ func (a *ShAction) Receive(from, message string) {
 		if a.Daemon {
 			a.Cancel()
 		}
-		a.startchan <- true
+		a.startchan <- struct{}{}
 	case MsgTerm:
-		a.termchan <- true
+		a.Cancel()
+		a.termchan <- struct{}{}
 	}
 }
 
