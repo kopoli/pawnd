@@ -107,7 +107,11 @@ func getFileList(patterns []string) []string {
 		}
 
 		for _, f := range m {
-			d[f] = struct{}{}
+			// Add only if really exists. Dangling symlinks fail
+			// to be watched.
+			if pathExists(f) {
+				d[f] = struct{}{}
+			}
 		}
 	}
 
