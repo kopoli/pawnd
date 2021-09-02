@@ -19,7 +19,7 @@ import (
 )
 
 func ActionName(name string) string {
-	return fmt.Sprintf("act:%s", name)
+	return fmt.Sprintf("act:%s", EscapeName(name))
 }
 
 type BaseAction struct {
@@ -33,6 +33,7 @@ func (a *BaseAction) Identify(name string, eb *EventBus) {
 	a.name = name
 	a.bus = eb
 	name = strings.TrimPrefix(name, "act:")
+	name = UnescapeName(name)
 	a.term = RegisterTerminal(name, a.Visible)
 }
 

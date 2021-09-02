@@ -2,6 +2,7 @@ package pawnd
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"sync"
 	"time"
@@ -43,6 +44,18 @@ type BusLink interface {
 
 	// Start the BusLink specific goroutine
 	Run()
+}
+
+func EscapeName(name string) string {
+	return url.PathEscape(name)
+}
+
+func UnescapeName(name string) string {
+	ret, err := url.PathUnescape(name)
+	if err != nil {
+		panic(fmt.Sprintf("Internal error: could not unescape [%s]: %v", name, err))
+	}
+	return ret
 }
 
 // Register a node with given name
