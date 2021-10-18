@@ -228,6 +228,12 @@ func (a *FileAction) Receive(from, message string) {
 
 func (a *FileAction) Run() {
 	matchPattern := func(file string) bool {
+		// Don't trigger if the file is a dangling symlink.
+		// Emacs does this if modifying a file and it is not yet saved.
+		if !pathExists(file) {
+			return false
+		}
+
 		file = filepath.Base(file)
 		for _, p := range a.Patterns {
 			m, er := path.Match(filepath.Base(p), file)
