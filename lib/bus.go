@@ -83,7 +83,9 @@ func (eb *EventBus) Send(from, to, message string) {
 	if message == MsgTerm {
 		eb.failsafeTimer.Reset(2 * time.Second)
 	}
-	eb.msgchan <- Message{from, to, message}
+	go func() {
+		eb.msgchan <- Message{from, to, message}
+	}()
 }
 
 // Run until terminated
@@ -127,7 +129,7 @@ func (eb *EventBus) LinkStopped(name string) {
 func NewEventBus() *EventBus {
 	var ret = EventBus{
 		links:   make(map[string]BusLink),
-		msgchan: make(chan Message, 5),
+		msgchan: make(chan Message, 1),
 		done:    make(chan struct{}, 1),
 	}
 
