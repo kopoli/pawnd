@@ -1,25 +1,26 @@
 package pawnd
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/kopoli/appkit"
+	"go.uber.org/goleak"
 )
 
 type lockWriter struct {
 	wr io.Writer
-	sync.Mutex
+	sync.RWMutex
 }
 
 func (w *lockWriter) Write(p []byte) (n int, err error) {
@@ -30,7 +31,7 @@ func (w *lockWriter) Write(p []byte) (n int, err error) {
 }
 
 func Test_pawndRunning(t *testing.T) {
-	buf := &bytes.Buffer{}
+	buf := &strings.Builder{}
 	wr := &lockWriter{}
 	wr.wr = buf
 
@@ -74,6 +75,7 @@ func Test_pawndRunning(t *testing.T) {
 
 	opSleep := func(d time.Duration) func() error {
 		return func() error {
+			runtime.Gosched()
 			time.Sleep(d)
 			return nil
 		}
@@ -95,7 +97,8 @@ func Test_pawndRunning(t *testing.T) {
 	opFile := func(name, contents string) func() error {
 		name = filepath.Join(testdir, name)
 		return func() error {
-			return ioutil.WriteFile(name, []byte(contents), 0600)
+			fmt.Fprintln(os.Stderr, "TEST: creating contents to file", name)
+			return os.WriteFile(name, []byte(contents), 0600)
 		}
 	}
 
@@ -110,13 +113,23 @@ func Test_pawndRunning(t *testing.T) {
 
 	opPrintOutput := func() func() error {
 		return func() error {
-			wr.Lock()
+			wr.RLock()
 			fmt.Println(buf.String())
-			wr.Unlock()
+			wr.RUnlock()
 			return nil
 		}
 	}
 	_ = opPrintOutput
+
+	opYield := func() func() error {
+		return func() error {
+			for i := 0; i < 10; i++ {
+				runtime.Gosched()
+			}
+			return nil
+		}
+	}
+	_ = opYield
 
 	opSetOpt := func(key string, value string) func() error {
 		return func() error {
@@ -127,21 +140,34 @@ func Test_pawndRunning(t *testing.T) {
 
 	opSetVerbose := opSetOpt("verbose", "t")
 
-	opExpectOutput := func(expectRe string) func() error {
-		re := regexp.MustCompile(expectRe)
+	opExpectOutputParam := func(reg string, shouldFind bool) func() error {
+		re := regexp.MustCompile(reg)
 		return func() error {
 			// Poll quickly if given string is in the output
-			for i := 0; i < 1000; i++ {
-				wr.Lock()
+			for i := 0; i < 10; i++ {
+				wr.RLock()
 				s := buf.String()
-				wr.Unlock()
+				wr.RUnlock()
 				if re.MatchString(s) {
+					_ = opPrintOutput()()
+					if !shouldFind {
+						return fmt.Errorf("found regexp: %s in string [%s]", reg, s)
+					}
 					return nil
 				}
-				time.Sleep(time.Millisecond * 2)
+				runtime.Gosched()
+				time.Sleep(time.Millisecond * 200)
 			}
-			return fmt.Errorf("could not find regexp: %s", expectRe)
+			_ = opPrintOutput()()
+			if !shouldFind {
+				return nil
+			}
+			return fmt.Errorf("could not find regexp: %s", reg)
 		}
+	}
+
+	opExpectOutput := func(re string) func() error {
+		return opExpectOutputParam(re, true)
 	}
 
 	type IntegrationTest struct {
@@ -298,13 +324,13 @@ script=" : "
 succeeded=succtask
 
 [succtask]
-script=go run inttest.go piip
+script=go run inttest.go piip2
 `,
 			[]opfunc{
 				opSetVerbose,
 			},
 			[]opfunc{
-				opExpectOutput("inttest.*piip"),
+				opExpectOutput("inttest.*piip2"),
 			}),
 		PawnfileOps("Triggering failing task", `[inttest]
 init
@@ -331,7 +357,6 @@ script=go run inttest.go this failed
 				opExpectOutput("something"),
 				opPawnfile("[else happens]\nscript=! :"),
 				opExpectOutput("File.*Pawnfile.*changed"),
-				opPrintOutput(),
 			},
 			ExpectedErrorRe: "main restarted",
 		},
@@ -349,6 +374,7 @@ script=go run inttest.go this failed
 
 		PawnfileOps("Triggering with a file change", fmt.Sprintf(`[filechange]
 file=%s/*.tmp
+hysteresis=10ms
 changed=changedtask
 
 [changedtask]
@@ -364,11 +390,37 @@ script=:
 				opExpectOutput("Sending trigger to changedtask"),
 				opPrintOutput(),
 			}),
+
+		PawnfileOps("Not triggering a change if all files are excluded", fmt.Sprintf(`[filechange]
+file=%s/*.tmp !%s/*something*
+hysteresis=300ms
+changed=run
+
+[run]
+script=:
+`, testdir, testdir),
+			[]opfunc{
+				opSetVerbose,
+				opFile("something.tmp", "contents here"),
+				opFile("other.tmp", "morecontents"),
+			},
+			[]opfunc{
+				opExpectOutput("run"),
+				opFile("something.tmp", "changed contents"),
+				// wait for a while for the separate file
+				// change to trigger
+				opSleep(time.Millisecond * 100),
+				opFile("other.tmp", "This should be notified"),
+				// opYield(),
+				opExpectOutputParam("Sending trigger to run", true),
+			}),
 	}
 	for _, tt := range tests {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
+			defer goleak.VerifyNone(t)
+
 			err := os.RemoveAll(testdir)
 			if err != nil {
 				t.Error("Could not remove test directory:", err)
@@ -381,6 +433,7 @@ script=:
 
 			opts = appkit.NewOptions()
 			opts.Set("configuration-file", pawnfile)
+			opts.Set("pawnfile-hysteresis", "10")
 
 			wr.Lock()
 			buf.Reset()
@@ -405,7 +458,10 @@ script=:
 					opErr = fmt.Errorf("internal error, sleep failed: %v", err)
 				}
 				for i := range tt.ops {
-					fmt.Println("Running op", spew.Sdump(tt.ops[i]))
+					v := reflect.ValueOf(tt.ops[i])
+					f := runtime.FuncForPC(v.Pointer())
+					fname, line := f.FileLine(v.Pointer())
+					fmt.Printf("Running op %v:%d\n", filepath.Base(fname), line)
 					err := tt.ops[i]()
 					if err != nil {
 						opErr = fmt.Errorf("op %d failed: %v\n  op: %v",

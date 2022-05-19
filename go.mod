@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-zglob v0.0.4
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/robfig/cron v1.2.0
+	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.20.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/ini.v1 v1.67.0
