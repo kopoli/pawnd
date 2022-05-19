@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -90,39 +89,14 @@ type FileAction struct {
 
 	termchan chan bool
 
-	files    []string
-	dirs     []string
-	watch    *fsnotify.Watcher
-	dirWatch *fsnotify.Watcher
+	dirs  []string
+	watch *fsnotify.Watcher
 
 	BaseAction
 }
 
-// Get the list of files represented by the given list of glob patterns
-func getFileList(patterns []string) []string {
-	d := map[string]struct{}{}
-	for _, pattern := range patterns {
-		m, err := zglob.Glob(pattern)
-		if err != nil {
-			continue
-		}
-
-		for _, f := range m {
-			// Add only if really exists. Dangling symlinks fail
-			// to be watched.
-			if pathExists(f) {
-				d[f] = struct{}{}
-			}
-		}
-	}
-
-	ret := make([]string, 0, len(d))
-	for k := range d {
-		ret = append(ret, k)
-	}
-	sort.Strings(ret)
-
-	return ret
+func isExclusion(pattern string) bool {
+	return len(pattern) > 0 && pattern[0] == '!'
 }
 
 func pathExists(path string) bool {
@@ -132,16 +106,36 @@ func pathExists(path string) bool {
 	return true
 }
 
-func getDirList(patterns, files []string) []string {
+func getDirList(patterns []string) []string {
 	d := map[string]struct{}{}
-	for i := range patterns {
-		patternDir := filepath.Dir(patterns[i])
-		if pathExists(patternDir) {
-			d[patternDir] = struct{}{}
+	for _, pattern := range patterns {
+		remove := isExclusion(pattern)
+		if remove {
+			pattern = pattern[1:]
 		}
-	}
-	for i := range files {
-		d[filepath.Dir(files[i])] = struct{}{}
+
+		m, err := zglob.Glob(pattern)
+		if err != nil {
+			continue
+		}
+
+		// Delete files from the watch list if pattern is prefixed
+		// with !
+		if remove {
+			for _, f := range m {
+				delete(d, f)
+			}
+			continue
+		}
+
+		for _, f := range m {
+			// Add only if really exists. Dangling symlinks fail
+			// to be watched.
+			f = filepath.Dir(f)
+			if pathExists(f) {
+				d[f] = struct{}{}
+			}
+		}
 	}
 
 	ret := make([]string, 0, len(d))
@@ -176,10 +170,9 @@ func NewFileAction(patterns ...string) (*FileAction, error) {
 }
 
 func (a *FileAction) updateFiles() error {
-	a.files = getFileList(a.Patterns)
-	a.dirs = getDirList(a.Patterns, a.files)
+	a.dirs = getDirList(a.Patterns)
 
-	if len(a.files)+len(a.dirs) == 0 {
+	if len(a.dirs) == 0 {
 		return fmt.Errorf("no watched files or directories")
 	}
 
@@ -194,24 +187,8 @@ func (a *FileAction) updateFiles() error {
 		return fmt.Errorf("could not create a new watcher: %v", err)
 	}
 
-	for i := range a.files {
-		err := a.watch.Add(a.files[i])
-		if err != nil {
-			return fmt.Errorf("could not watch file %s", a.files[i])
-		}
-	}
-
-	if a.dirWatch != nil {
-		a.dirWatch.Close()
-	}
-
-	a.dirWatch, err = fsnotify.NewWatcher()
-	if err != nil {
-		return fmt.Errorf("could not create a new watcher: %v", err)
-	}
-
 	for i := range a.dirs {
-		err := a.dirWatch.Add(a.dirs[i])
+		err := a.watch.Add(a.dirs[i])
 		if err != nil {
 			return fmt.Errorf("could not watch directory %s", a.dirs[i])
 		}
@@ -235,14 +212,22 @@ func (a *FileAction) Run() {
 		}
 
 		file = filepath.Base(file)
+		found := false
 		for _, p := range a.Patterns {
-			m, er := path.Match(filepath.Base(p), file)
-			if m && er == nil {
-				fmt.Fprintf(a.Terminal().Verbose(), "File \"%s\" changed\n", file)
-				return true
+			isExcl := isExclusion(p)
+			if isExcl {
+				p = p[1:]
+			}
+
+			m, err := zglob.Match(filepath.Base(p), file)
+			if m && err == nil {
+				found = !isExcl
 			}
 		}
-		return false
+		if found {
+			fmt.Fprintf(a.Terminal().Verbose(), "File \"%s\" changed\n", file)
+		}
+		return found
 	}
 
 	go func() {
@@ -261,25 +246,28 @@ func (a *FileAction) Run() {
 			select {
 			case <-threshold.C:
 				a.trigger(a.Changed)
-			case event := <-a.watch.Events:
-				refreshTimer(event.Name)
-			case event := <-a.dirWatch.Events:
+			case event, ok := <-a.watch.Events:
+				// Channel was closed
+				if !ok {
+					break loop
+				}
 				err := a.updateFiles()
 				if err != nil {
 					fmt.Fprintln(a.Terminal().Stderr(), "Error updating watched files:", err)
 				}
 
 				refreshTimer(event.Name)
-			case err := <-a.watch.Errors:
-				fmt.Fprintln(a.Terminal().Stderr(), "Error Received:", err)
-			case err := <-a.dirWatch.Errors:
+			case err, ok := <-a.watch.Errors:
+				// Channel was closed
+				if !ok {
+					break loop
+				}
 				fmt.Fprintln(a.Terminal().Stderr(), "Error Received:", err)
 			case <-a.termchan:
 				break loop
 			}
 		}
 		a.watch.Close()
-		a.dirWatch.Close()
 		a.bus.LinkStopped(a.name)
 	}()
 }
