@@ -63,6 +63,8 @@ type TerminalOutput struct {
 	out            io.Writer
 	buffer         *termWriter
 	terminals      []*terminal
+	regtermchan    chan *terminal
+	termMutex      sync.Mutex
 	Width          int
 	Verbose        bool
 	TitleStatus    string
@@ -91,7 +93,8 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 			ready: readychan,
 			out:   &bytes.Buffer{},
 		},
-		termchan: make(chan struct{}, 1),
+		termchan:    make(chan struct{}, 1),
+		regtermchan: make(chan *terminal, 1),
 	}
 
 	sl, slerr := tsize.NewSizeListener()
@@ -104,7 +107,9 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 
 	ret.termWait.Add(1)
 	go func() {
+		// the ret.terminals should be written in this goroutine only.
 		drawTimer := time.NewTimer(ret.updateInterval)
+		stopTimer(drawTimer)
 	loop:
 		for {
 			select {
@@ -114,10 +119,21 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 				drawTimer.Stop()
 				drawTimer.Reset(ret.updateInterval)
 			case <-ret.readychan:
+				if !ret.initialized {
+					drawTimer.Reset(ret.updateInterval)
+				}
 				ret.draw()
 			case s := <-sl.Change:
 				// data race condition ?
 				ret.Width = s.Width - limit
+			case term := <-ret.regtermchan:
+				ret.termMutex.Lock()
+				if ret.terminals == nil && ret.defaultTerm == nil {
+					ret.defaultTerm = term
+				} else {
+					ret.terminals = append(ret.terminals, term)
+				}
+				ret.termMutex.Unlock()
 			case <-ret.termchan:
 				break loop
 			}
@@ -126,9 +142,12 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 		sl.Close()
 	}()
 
+	if termOutput != nil {
+		termOutput.Stop()
+	}
 	termOutput = ret
-	ret.defaultTerm = RegisterTerminal("init", false)
-	ret.terminals = nil
+
+	RegisterTerminal("init", false)
 
 	// Print out the size listener error when the terminal is ready
 	if slerr != nil {
@@ -142,11 +161,28 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 // Stop TerminalOutput. This cannot be stopped with the MsgTerm message as some
 // other actions can print while they are terminating.
 func (a *TerminalOutput) Stop() {
-	a.termchan <- struct{}{}
+	select {
+	case <-a.termchan:
+	default:
+		close(a.termchan)
+	}
 	a.termWait.Wait()
 }
 
+// Register a new Terminal to the TerminalOutput
+func (a *TerminalOutput) Register(t *terminal) {
+	prefix := fmt.Sprintf("[%s%s%s] ", ansi.ColorCode("default+hb"), t.Name, ansi.Reset)
+	t.out = NewPrefixedWriter(prefix, termOutput.buffer)
+	t.err = NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer)
+	t.verbose = &VerboseWriter{t.out, termOutput.Verbose}
+
+	a.regtermchan <- t
+}
+
 func GetTerminal(name string) Terminal {
+	termOutput.termMutex.Lock()
+	defer termOutput.termMutex.Unlock()
+
 	if name == "" {
 		return termOutput.defaultTerm
 	}
@@ -269,6 +305,9 @@ func determineTitleStatus(wholeStatus, singleStatus string) string {
 func (a *TerminalOutput) draw() {
 	tmp := &bytes.Buffer{}
 
+	a.termMutex.Lock()
+	defer a.termMutex.Unlock()
+
 	if !a.initialized {
 		// Make initial vertical space
 		for i := range a.terminals {
@@ -317,10 +356,14 @@ func (a *TerminalOutput) draw() {
 	_, _ = tmp.WriteTo(a.out)
 }
 
-func (a *TerminalOutput) Draw() {
-	// When Draw is called, it is regarded as initial run
-	a.initialized = false
-	a.readychan <- struct{}{}
+func (a *TerminalOutput) Ready() bool {
+	select {
+	case <-a.termchan:
+		return false
+	default:
+		a.readychan <- struct{}{}
+		return true
+	}
 }
 
 ///
@@ -346,7 +389,7 @@ type terminal struct {
 	Progress int    // progress bar from 0 - 100 or negative for a spinner
 	Visible  bool   // Is a statusbar visible
 
-	progressStopChan chan bool
+	progressStopChan chan struct{}
 	statusMutex      sync.Mutex
 
 	out     *PrefixedWriter
@@ -359,16 +402,12 @@ type terminal struct {
 
 // RegisterTerminal registers an interface to outputting
 func RegisterTerminal(name string, visible bool) Terminal {
-	prefix := fmt.Sprintf("[%s%s%s] ", ansi.ColorCode("default+hb"), name, ansi.Reset)
 	var ret = terminal{
 		Name:             name,
 		Visible:          visible,
-		out:              NewPrefixedWriter(prefix, termOutput.buffer),
-		err:              NewPrefixedWriter(prefix+ansi.ColorCode("red"), termOutput.buffer),
-		progressStopChan: make(chan bool, 1),
+		progressStopChan: make(chan struct{}, 1),
 	}
-	ret.verbose = &VerboseWriter{ret.out, termOutput.Verbose}
-	termOutput.terminals = append(termOutput.terminals, &ret)
+	termOutput.Register(&ret)
 	return &ret
 }
 
@@ -387,13 +426,6 @@ func (t *terminal) Verbose() io.Writer {
 func (t *terminal) SetStatus(status string, info string) {
 	var progress int
 
-	drainChan := func(ch chan bool) {
-		select {
-		case <-ch:
-		default:
-		}
-	}
-
 	switch status {
 	case statusWait:
 		progress = 0
@@ -409,7 +441,6 @@ func (t *terminal) SetStatus(status string, info string) {
 		} else {
 			redrawtime := time.Millisecond * 200
 			go func() {
-				drainChan(t.progressStopChan)
 				runtimer := time.NewTimer(redrawtime)
 			loop:
 				for {
@@ -428,7 +459,10 @@ func (t *terminal) SetStatus(status string, info string) {
 						t.Progress = progress
 						t.statusMutex.Unlock()
 
-						termOutput.readychan <- struct{}{}
+						if !termOutput.Ready() {
+							stopTimer(runtimer)
+							break loop
+						}
 					case <-t.progressStopChan:
 						stopTimer(runtimer)
 						break loop
@@ -443,10 +477,10 @@ func (t *terminal) SetStatus(status string, info string) {
 		t.runtime = time.Since(t.startTime)
 		t.statusMutex.Unlock()
 		progress = 100
-
 		select {
-		case t.progressStopChan <- true:
+		case <-t.progressStopChan:
 		default:
+			close(t.progressStopChan)
 		}
 	}
 
@@ -456,7 +490,7 @@ func (t *terminal) SetStatus(status string, info string) {
 	t.Progress = progress
 	t.statusMutex.Unlock()
 
-	termOutput.readychan <- struct{}{}
+	termOutput.Ready()
 }
 
 // PrefixedWriter is an io.Writer that prefixes and suffixes all lines given

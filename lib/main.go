@@ -35,7 +35,7 @@ func Main(opts appkit.Options) error {
 	ra := NewRestartAction(conffile)
 	eb.Register(ActionName(fa.Changed[0]), ra)
 
-	ta.Draw()
+	ta.Ready()
 	err = eb.Run()
 	return err
 }
