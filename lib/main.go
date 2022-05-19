@@ -1,6 +1,9 @@
 package pawnd
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/kopoli/appkit"
 )
 
@@ -31,6 +34,11 @@ func Main(opts appkit.Options) error {
 		return err
 	}
 	fa.Changed = []string{"pawnd-restart"}
+	hyst, err := strconv.Atoi(opts.Get("pawnfile-hysteresis", "1000"))
+	if err != nil {
+		hyst = 1000
+	}
+	fa.Hysteresis = time.Millisecond * time.Duration(hyst)
 	eb.Register("pawnfile-watcher", fa)
 	ra := NewRestartAction(conffile)
 	eb.Register(ActionName(fa.Changed[0]), ra)
