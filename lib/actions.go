@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	fsnotify "github.com/fsnotify/fsnotify"
 	zglob "github.com/mattn/go-zglob"
 	"github.com/robfig/cron"
-	fsnotify "gopkg.in/fsnotify.v1"
 	"mvdan.cc/sh/interp"
 	"mvdan.cc/sh/syntax"
 )
