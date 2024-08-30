@@ -441,6 +441,11 @@ func (t *terminal) SetStatus(status string, info string) {
 		} else {
 			redrawtime := time.Millisecond * 200
 			go func() {
+				// Drain the channel
+				select {
+				case <-t.progressStopChan:
+				default:
+				}
 				runtimer := time.NewTimer(redrawtime)
 			loop:
 				for {
@@ -478,9 +483,8 @@ func (t *terminal) SetStatus(status string, info string) {
 		t.statusMutex.Unlock()
 		progress = 100
 		select {
-		case <-t.progressStopChan:
+		case t.progressStopChan <- struct{}{}:
 		default:
-			close(t.progressStopChan)
 		}
 	}
 
