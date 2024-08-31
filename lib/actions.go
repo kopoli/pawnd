@@ -268,7 +268,7 @@ func (a *FileAction) Run() {
 			}
 		}
 		a.watch.Close()
-		a.bus.LinkStopped(a.name)
+		a.bus.LinkStopped()
 	}()
 }
 
@@ -340,7 +340,7 @@ func (a *SignalAction) Run() {
 				break loop
 			}
 		}
-		a.bus.LinkStopped(a.name)
+		a.bus.LinkStopped()
 	}()
 }
 
@@ -510,7 +510,7 @@ func (a *ShAction) Run() {
 				break loop
 			}
 		}
-		a.bus.LinkStopped(a.name)
+		a.bus.LinkStopped()
 	}()
 }
 
@@ -564,7 +564,7 @@ func (a *RestartAction) Run() {
 				break loop
 			}
 		}
-		a.bus.LinkStopped(a.name)
+		a.bus.LinkStopped()
 	}()
 }
 
@@ -628,6 +628,6 @@ func (a *CronAction) Run() {
 				break loop
 			}
 		}
-		a.bus.LinkStopped(a.name)
+		a.bus.LinkStopped()
 	}()
 }

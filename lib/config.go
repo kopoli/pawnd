@@ -159,7 +159,7 @@ func CreateActions(file *ini.File, bus *EventBus) error {
 				a := NewInitAction(ActionName(sect.Name()))
 				name := fmt.Sprintf("init:%s", ActionName(sect.Name()))
 				bus.Register(name, a)
-				bus.LinkStopped(name)
+				bus.LinkStopped()
 			}
 		case sect.HasKey("file"):
 			key := sect.Key("file")

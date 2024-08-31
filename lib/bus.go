@@ -122,7 +122,7 @@ func (eb *EventBus) Close() error {
 
 // Action notifies that it has stopped. This is for waiting for all actions
 // when terminating.
-func (eb *EventBus) LinkStopped(name string) {
+func (eb *EventBus) LinkStopped() {
 	eb.wg.Done()
 }
 
