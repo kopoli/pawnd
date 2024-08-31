@@ -56,7 +56,10 @@ type Terminal interface {
 }
 
 // the singleton termaction
-var termOutput *TerminalOutput
+var termOutput struct {
+	*TerminalOutput
+	sync.Mutex
+}
 
 type TerminalOutput struct {
 	updateInterval time.Duration
@@ -142,10 +145,12 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 		sl.Close()
 	}()
 
-	if termOutput != nil {
+	termOutput.Lock()
+	if termOutput.TerminalOutput != nil {
 		termOutput.Stop()
 	}
-	termOutput = ret
+	termOutput.TerminalOutput = ret
+	termOutput.Unlock()
 
 	RegisterTerminal("init", false)
 
@@ -155,7 +160,7 @@ func NewTerminalOutput(opts appkit.Options) *TerminalOutput {
 			"Could not start terminal size listener:", err)
 	}
 
-	return termOutput
+	return ret
 }
 
 // Stop TerminalOutput. This cannot be stopped with the MsgTerm message as some
@@ -464,7 +469,10 @@ func (t *terminal) SetStatus(status string, info string) {
 						t.Progress = progress
 						t.statusMutex.Unlock()
 
-						if !termOutput.Ready() {
+						termOutput.Lock()
+						ready := termOutput.Ready()
+						termOutput.Unlock()
+						if !ready {
 							stopTimer(runtimer)
 							break loop
 						}
