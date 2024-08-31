@@ -70,7 +70,7 @@ func NewInitAction(triggerName string) *InitAction {
 	return &InitAction{triggerName: triggerName}
 }
 
-func (a *InitAction) Receive(from, message string) {
+func (a *InitAction) Receive(_, message string) {
 	if message == MsgInit {
 		a.Send(a.triggerName, MsgTrig)
 	}
@@ -197,7 +197,7 @@ func (a *FileAction) updateFiles() error {
 	return nil
 }
 
-func (a *FileAction) Receive(from, message string) {
+func (a *FileAction) Receive(_, message string) {
 	if message == MsgTerm {
 		a.termchan <- true
 	}
@@ -312,7 +312,7 @@ func NewSignalAction(signame string) (*SignalAction, error) {
 	return &ret, nil
 }
 
-func (a *SignalAction) Receive(from, message string) {
+func (a *SignalAction) Receive(_, message string) {
 	if message == MsgTerm {
 		a.termchan <- struct{}{}
 	}
@@ -476,7 +476,7 @@ func (a *ShAction) Cancel() {
 	a.cancelMutex.Unlock()
 }
 
-func (a *ShAction) Receive(from, message string) {
+func (a *ShAction) Receive(_, message string) {
 	switch message {
 	case MsgWait:
 		a.Terminal().SetStatus(statusWait, "")
@@ -533,7 +533,7 @@ func NewRestartAction(conffile string) *RestartAction {
 	}
 }
 
-func (a *RestartAction) Receive(from, message string) {
+func (a *RestartAction) Receive(_, message string) {
 	switch message {
 	case MsgTrig:
 		a.trigchan <- true
@@ -598,7 +598,7 @@ func NewCronAction(spec string) (*CronAction, error) {
 	return ret, nil
 }
 
-func (a *CronAction) Receive(from, message string) {
+func (a *CronAction) Receive(_, message string) {
 	if message == MsgTerm {
 		a.termchan <- true
 	}
